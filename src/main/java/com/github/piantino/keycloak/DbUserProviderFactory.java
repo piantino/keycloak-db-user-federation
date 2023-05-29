@@ -10,8 +10,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
@@ -20,7 +18,6 @@ import org.keycloak.models.KeycloakSessionTask;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.provider.ProviderConfigProperty;
-import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.UserStorageProviderFactory;
 import org.keycloak.storage.UserStorageProviderModel;
 import org.keycloak.storage.user.ImportSynchronization;
@@ -76,7 +73,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<String, Object>(columns);
                     for (int i = 1; i <= columns; ++i) {
-                        row.put(md.getColumnName(i), rs.getObject(i));
+                        row.put(md.getColumnName(i).toLowerCase(), rs.getObject(i));
                     }
                     LOGGER.debugv("User {0}", row);
 

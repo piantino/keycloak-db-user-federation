@@ -1,7 +1,10 @@
 package com.github.piantino.keycloak;
 
 import java.sql.Timestamp;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
@@ -13,16 +16,14 @@ import org.keycloak.storage.user.ImportedUserValidation;
 
 public class DbUserProvider implements UserStorageProvider, ImportedUserValidation {
 
-    protected static final Logger LOGGER = Logger.getLogger(DbUserProvider.class);
+    private enum USER_ATTR {
+        username, email, email_verified, enabled, first_name, last_name, updated
+    }
 
-    private static final String USERNAME = "username";
-    private static final String EMAIL = "email";
-    private static final String EMAIL_VERIFIED = "emailverified";
-    private static final String ENABLED = "enabled";
-    private static final String FIRST_NAME = "firstname";
-    private static final String LAST_NAME = "lastname";
-    private static final String UPDATED = "updated";
-
+    private static final Logger LOGGER = Logger.getLogger(DbUserProvider.class);
+    
+    private static final List<String> USER_ATTR_KEYS = Arrays.asList(USER_ATTR.values()).stream().map(a -> a.name()).collect(Collectors.toList());
+    
     private KeycloakSession session;
     private ComponentModel model;
 
@@ -32,19 +33,24 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     }
 
     public void importUser(RealmModel realm, ComponentModel model, Map<String, Object> data) {
-        UserModel user = session.userLocalStorage().addUser(realm, (String) data.get(USERNAME));
+        UserModel user = session.userLocalStorage().addUser(realm, (String) data.get(USER_ATTR.username.name()));
 
         LOGGER.debugv("User class {0}", user.getClass());
 
         user.setFederationLink(model.getId());
 
-        user.setEmail((String) data.get(EMAIL));
-        user.setEmailVerified(toBoolean(data, EMAIL_VERIFIED));
-        user.setEnabled(toBoolean(data, ENABLED));
-        user.setFirstName((String) data.get(FIRST_NAME));
-        user.setLastName((String) data.get(LAST_NAME));
+        user.setEmail((String) data.get(USER_ATTR.email.name()));
+        user.setEmailVerified(toBoolean(data, USER_ATTR.email_verified.name()));
+        user.setEnabled(toBoolean(data, USER_ATTR.enabled.name()));
+        user.setFirstName((String) data.get(USER_ATTR.first_name.name()));
+        user.setLastName((String) data.get(USER_ATTR.last_name.name()));
+        user.setSingleAttribute(USER_ATTR.updated.name(), ((Timestamp) data.get(USER_ATTR.updated.name())).toString());
 
-        user.setSingleAttribute(UPDATED, ((Timestamp) data.get(UPDATED)).toString());
+        for(String key : data.keySet()) {
+            if (!USER_ATTR_KEYS.contains(key)) {
+                user.setSingleAttribute(key, (String) data.get(key));
+            }
+        }
     }
 
     @Override
@@ -55,7 +61,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     @Override
     public UserModel validate(RealmModel realm, UserModel user) {
         // TODO: Check if the user exists in the external source
-        // Return null to remove localy
+        // Return null to remove localy UserModel
         return user;
     }
 

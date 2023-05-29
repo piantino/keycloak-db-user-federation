@@ -800,7 +800,7 @@
             "60"
           ],
           "sql": [
-            "SELECT username, email, emailverified, firstname, lastname, enabled, updated FROM users"
+            "SELECT username, email, email_verified, first_name, last_name, enabled, updated, my_attr FROM users"
           ]
         }
       }

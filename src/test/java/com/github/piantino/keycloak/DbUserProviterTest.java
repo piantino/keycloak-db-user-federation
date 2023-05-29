@@ -1,10 +1,13 @@
 package com.github.piantino.keycloak;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
+import static org.junit.jupiter.api.Assertions.*;
 
-import org.junit.jupiter.api.Assertions;
+import org.apache.commons.lang.ArrayUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -76,8 +79,8 @@ public class DbUserProviterTest {
     public void importUsersFromDB() {
         SynchronizationResultRepresentation result = realm.userStorage().syncUsers(USER_PROVIDER_ID, "triggerFullSync");
 
-        Assertions.assertEquals(7, result.getAdded(), "Added");
-        Assertions.assertEquals(0, result.getUpdated(), "Updated");
+        assertEquals(7, result.getAdded(), "Added");
+        assertEquals(0, result.getUpdated(), "Updated");
     }
 
     @Test
@@ -85,23 +88,27 @@ public class DbUserProviterTest {
         UsersResource resource = realm.users();
         
         List<UserRepresentation> users = resource.list();
-        Assertions.assertEquals(7, users.size(), "Users imported");
+        assertEquals(7, users.size(), "Users imported");
 
         UserRepresentation user = users.get(4);
 
-        Assertions.assertEquals("presto@wizard.com", user.getEmail(), "Email");
-        Assertions.assertEquals(true, user.isEmailVerified(), "Email verified");
-        Assertions.assertEquals("Presto", user.getFirstName(), "First name");
-        Assertions.assertEquals("Wizard", user.getLastName(), "Last name");
-        Assertions.assertEquals(true, user.isEnabled(), "Enabled");
+        assertEquals("presto@wizard.com", user.getEmail(), "Email");
+        assertEquals(true, user.isEmailVerified(), "Email verified");
+        assertEquals("Presto", user.getFirstName(), "First name");
+        assertEquals("Wizard", user.getLastName(), "Last name");
+        assertEquals(true, user.isEnabled(), "Enabled");
+        assertNotNull(user.getAttributes().get("updated"), "Updated");
+        assertNull(user.getAttributes().get("my_attr"), "Custom attribute");
 
         user = users.get(6);
 
-        Assertions.assertEquals("uni@unicorn.com", user.getEmail(), "Email");
-        Assertions.assertEquals(false, user.isEmailVerified(), "Email verified");
-        Assertions.assertEquals("Uni", user.getFirstName(), "First name");
-        Assertions.assertEquals("Unicorn", user.getLastName(), "Last name");
-        Assertions.assertEquals(false, user.isEnabled(), "Enabled");
+        assertEquals("uni@unicorn.com", user.getEmail(), "Email");
+        assertEquals(false, user.isEmailVerified(), "Email verified");
+        assertEquals("Uni", user.getFirstName(), "First name");
+        assertEquals("Unicorn", user.getLastName(), "Last name");
+        assertEquals(false, user.isEnabled(), "Enabled");
+        assertNotNull(user.getAttributes().get("updated"), "Updated");
+        assertArrayEquals(Arrays.asList("my value").toArray(), user.getAttributes().get("my_attr").toArray(), "Custom attribute");
     }
 
 }
