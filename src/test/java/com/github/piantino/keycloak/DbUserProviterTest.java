@@ -2,24 +2,26 @@ package com.github.piantino.keycloak;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
-import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.SynchronizationResultRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.ext.ScriptUtils;
+import org.testcontainers.jdbc.JdbcDatabaseDelegate;
 import org.testcontainers.utility.MountableFile;
 
 import com.fasterxml.jackson.core.JsonParseException;
@@ -28,6 +30,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@TestMethodOrder(OrderAnnotation.class)
 public class DbUserProviterTest {
 
     private static final String USER_PROVIDER_ID = "d3766429-5ef2-4e7e-972a-2ee2872e6929";
@@ -46,7 +49,8 @@ public class DbUserProviterTest {
             .withNetwork(network)
             .withRealmImportFile("realm-export.json")
             .withCopyFileToContainer(MountableFile.forClasspathResource("keycloak.conf"),
-                    "/opt/keycloak/conf/keycloak.conf");
+                    "/opt/keycloak/conf/keycloak.conf")
+            .withEnv("TZ", "America/Sao_Paulo");
 
     private PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13.11")
             .withDatabaseName("test-db")
@@ -76,7 +80,8 @@ public class DbUserProviterTest {
     }
 
     @Test
-    public void importUsersFromDB() {
+    @Order(1)
+    public void importAllUsersFromDB() {
         SynchronizationResultRepresentation result = realm.userStorage().syncUsers(USER_PROVIDER_ID, "triggerFullSync");
 
         assertEquals(7, result.getAdded(), "Added");
@@ -84,10 +89,9 @@ public class DbUserProviterTest {
     }
 
     @Test
+    @Order(2)
     public void validateImportation() {
-        UsersResource resource = realm.users();
-        
-        List<UserRepresentation> users = resource.list();
+        List<UserRepresentation> users = realm.users().list();
         assertEquals(7, users.size(), "Users imported");
 
         UserRepresentation user = users.get(4);
@@ -108,7 +112,35 @@ public class DbUserProviterTest {
         assertEquals("Unicorn", user.getLastName(), "Last name");
         assertEquals(false, user.isEnabled(), "Enabled");
         assertNotNull(user.getAttributes().get("updated"), "Updated");
-        assertArrayEquals(Arrays.asList("my value").toArray(), user.getAttributes().get("my_attr").toArray(), "Custom attribute");
+        assertArrayEquals(Arrays.asList("my value").toArray(), user.getAttributes().get("my_attr").toArray(),
+                "Custom attribute");
     }
 
+    @Test
+    @Order(3)
+    public void importChangedUsersFromDB() {
+        JdbcDatabaseDelegate containerDelegate = new JdbcDatabaseDelegate(postgres, "");
+        ScriptUtils.runInitScript(containerDelegate, "update-script.sql");
+
+        SynchronizationResultRepresentation result = realm.userStorage().syncUsers(USER_PROVIDER_ID,
+                "triggerChangedUsersSync");
+
+        assertEquals(0, result.getAdded(), "Added");
+        assertEquals(1, result.getUpdated(), "Updated");
+    }
+
+    @Test
+    @Order(4)
+    public void validateUpdate() {
+        UserRepresentation user = realm.users().search("uni").get(0);
+
+        assertEquals("uni@unicorn.com", user.getEmail(), "Email");
+        assertEquals(false, user.isEmailVerified(), "Email verified");
+        assertEquals("Venger", user.getFirstName(), "First name");
+        assertEquals("Wizard", user.getLastName(), "Last name");
+        assertEquals(false, user.isEnabled(), "Enabled");
+        assertNotNull(user.getAttributes().get("updated"), "Updated");
+        assertArrayEquals(Arrays.asList("my value").toArray(), user.getAttributes().get("my_attr").toArray(),
+                "Custom attribute");
+    }
 }

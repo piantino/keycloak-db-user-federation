@@ -776,7 +776,7 @@
             "org.postgresql.Driver"
           ],
           "jdbcUrl": [
-            "jdbc:postgresql://postgres:5432/test-db?loggerLevel=OFF"
+            "jdbc:postgresql://postgres:5432/test-db?loggerLevel=OFF&options=-c%20timezone%3DAmerica/Sao_Paulo"
           ],
           "principal": [
             "sa"
@@ -799,8 +799,11 @@
           "acquisitionTimeout_s": [
             "60"
           ],
-          "sql": [
+          "syncSql": [
             "SELECT username, email, email_verified, first_name, last_name, enabled, updated, my_attr FROM users"
+          ],
+          "syncSinceSql": [
+            "SELECT username, email, email_verified, first_name, last_name, enabled, updated, my_attr FROM users WHERE updated > ?"
           ]
         }
       }

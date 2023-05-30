@@ -9,7 +9,8 @@ import io.agroal.api.configuration.supplier.AgroalPropertiesReader;
 
 public class DataSouceConfiguration {
 
-    public static final String SQL = "sql";
+    public static final String SYNC_SQL = "syncSql";
+    public static final String SYNC_SINCE_SQL = "syncSinceSql";
 
     public static List<ProviderConfigProperty> create() {
         return ProviderConfigurationBuilder.create()
@@ -33,7 +34,9 @@ public class DataSouceConfiguration {
                 .property()
                 .name(AgroalPropertiesReader.ACQUISITION_TIMEOUT_S).type(ProviderConfigProperty.STRING_TYPE).add()
                 .property()
-                .name(SQL).type(ProviderConfigProperty.TEXT_TYPE).add()
+                .name(SYNC_SQL).type(ProviderConfigProperty.TEXT_TYPE).add()
+                .property()
+                .name(SYNC_SINCE_SQL).type(ProviderConfigProperty.TEXT_TYPE).add()
                 .build();
     }
 

@@ -16,8 +16,12 @@ import org.keycloak.storage.user.ImportedUserValidation;
 
 public class DbUserProvider implements UserStorageProvider, ImportedUserValidation {
 
-    private enum USER_ATTR {
+    public enum USER_ATTR {
         username, email, email_verified, enabled, first_name, last_name, updated
+    }
+
+    public enum Importation {
+        ADDED, UPDATED
     }
 
     private static final Logger LOGGER = Logger.getLogger(DbUserProvider.class);
@@ -32,8 +36,17 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         this.model = model;
     }
 
-    public void importUser(RealmModel realm, ComponentModel model, Map<String, Object> data) {
-        UserModel user = session.userLocalStorage().addUser(realm, (String) data.get(USER_ATTR.username.name()));
+    public Importation importUser(RealmModel realm, ComponentModel model, Map<String, Object> data) {
+        String username = (String) data.get(USER_ATTR.username.name());
+
+        Importation importation = Importation.UPDATED;
+
+        UserModel user = session.userLocalStorage().getUserByUsername(realm, username);
+        
+        if (user == null) {
+            user = session.userLocalStorage().addUser(realm, username);
+            importation = Importation.ADDED;
+        }
 
         LOGGER.debugv("User class {0}", user.getClass());
 
@@ -51,6 +64,8 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
                 user.setSingleAttribute(key, (String) data.get(key));
             }
         }
+
+        return importation;
     }
 
     @Override
