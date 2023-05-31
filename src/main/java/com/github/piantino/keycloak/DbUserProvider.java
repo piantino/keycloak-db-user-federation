@@ -14,6 +14,8 @@ import org.keycloak.models.UserModel;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.user.ImportedUserValidation;
 
+import com.github.piantino.keycloak.exception.DbUserProviderException;
+
 public class DbUserProvider implements UserStorageProvider, ImportedUserValidation {
 
     public enum USER_ATTR {
@@ -45,12 +47,11 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         
         if (user == null) {
             user = session.userLocalStorage().addUser(realm, username);
+            user.setFederationLink(model.getId());
             importation = Importation.ADDED;
+        } else if (!model.getId().equals(user.getFederationLink())) {
+            throw new DbUserProviderException("Local user not created from importation: " + username);
         }
-
-        LOGGER.debugv("User class {0}", user.getClass());
-
-        user.setFederationLink(model.getId());
 
         user.setEmail((String) data.get(USER_ATTR.email.name()));
         user.setEmailVerified(toBoolean(data, USER_ATTR.email_verified.name()));

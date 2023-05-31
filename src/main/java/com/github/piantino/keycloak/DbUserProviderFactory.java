@@ -30,6 +30,7 @@ import org.keycloak.storage.user.SynchronizationResult;
 import com.github.piantino.keycloak.DbUserProvider.Importation;
 import com.github.piantino.keycloak.datasource.DataSouceConfiguration;
 import com.github.piantino.keycloak.datasource.DataSourceProvider;
+import com.github.piantino.keycloak.exception.DbUserProviderException;
 
 import io.agroal.api.AgroalDataSource;
 
@@ -81,6 +82,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     @Override
     public void close() {
         for (Entry<String, AgroalDataSource> entry : dataSourceByModelId.entrySet()) {
+            LOGGER.debugv("Close DataSource {0}", entry.getKey());
             entry.getValue().close();
         }
     }
@@ -128,22 +130,25 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                                     result.increaseUpdated();
                                 }
                             } catch (Throwable e) {
-                                result.increaseRemoved();
-                                LOGGER.errorv(e, "Error on import {0}", data.get(DbUserProvider.USER_ATTR.username.name()));
+                                result.increaseFailed();
+                                LOGGER.errorv(e, "Error on import {0}",
+                                        data.get(DbUserProvider.USER_ATTR.username.name()));
                             }
                         }
                     });
                 }
             }
         } catch (SQLException e) {
-            LOGGER.errorv(e, "Error on connect to database");
+            throw new DbUserProviderException("Error on connect to database", e);
         }
         return result;
     }
 
     private AgroalDataSource getDataSource(UserStorageProviderModel model) {
-        return dataSourceByModelId.computeIfAbsent(model.getId(),
-                key -> DataSourceProvider.create(model));
+        return dataSourceByModelId.computeIfAbsent(model.getId(), key -> {
+            LOGGER.debugv("Creating DataSource {0} ({1})", model.getId(), model.getParentId());
+            return DataSourceProvider.create(model);
+        });
     }
 
 }
