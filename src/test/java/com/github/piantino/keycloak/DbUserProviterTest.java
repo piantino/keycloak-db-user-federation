@@ -25,6 +25,7 @@ import org.keycloak.authorization.client.Configuration;
 import org.keycloak.authorization.client.util.HttpResponseException;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.SynchronizationResultRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.testcontainers.containers.GenericContainer;
@@ -51,11 +52,10 @@ public class DbUserProviterTest {
                         .withAdminUsername("admin")
                         .withAdminPassword("tops3cr3t")
                         .withProviderClassesFrom("target/classes")
-                        // .withEnv("DEBUG_MODE", "true")
-                        // .withEnv("DEBUG_PORT", "8000")
-                        // .withEnv("JAVA_OPTS",
-                        // "-agentlib:jdwp=transport=dt_socket,server=y,address=*:8000,suspend=n")
-                        // .withExposedPorts(8000)
+                        .withEnv("DEBUG_MODE", "true")
+                        .withEnv("DEBUG_PORT", "8000")
+                        .withEnv("JAVA_OPTS", "-agentlib:jdwp=transport=dt_socket,server=y,address=*:8000,suspend=n")
+                        .withExposedPorts(8080, 8000)
                         .withNetwork(network)
                         .withRealmImportFile("realm-export.json")
                         .withCopyFileToContainer(MountableFile.forClasspathResource("keycloak.conf"),
@@ -97,15 +97,16 @@ public class DbUserProviterTest {
 
                 assertEquals(7, result.getAdded(), "Added");
                 assertEquals(0, result.getUpdated(), "Updated");
+                assertEquals(1, result.getFailed(), "Failed");
         }
 
         @Test
         @Order(2)
         public void validateImportation() {
-                List<UserRepresentation> users = realm.users().list();
-                assertEquals(7, users.size(), "Users imported");
+                int userCount = realm.users().count();
+                assertEquals(7, userCount, "Users imported");
 
-                UserRepresentation user = users.get(4);
+                UserRepresentation user = realm.users().search("presto").get(0);
 
                 assertEquals("presto@wizard.com", user.getEmail(), "Email");
                 assertEquals(true, user.isEmailVerified(), "Email verified");
@@ -113,9 +114,10 @@ public class DbUserProviterTest {
                 assertEquals("Wizard", user.getLastName(), "Last name");
                 assertEquals(true, user.isEnabled(), "Enabled");
                 assertNotNull(user.getAttributes().get("updated"), "Updated");
-                assertNull(user.getAttributes().get("my_attr"), "Custom attribute");
+                assertNull(user.getAttributes().get("ability"), "Custom attribute");
+                assertEquals(1, user.getRequiredActions().size(), "Required actions");
 
-                user = users.get(6);
+                user = realm.users().search("uni").get(0);
 
                 assertEquals("uni@unicorn.com", user.getEmail(), "Email");
                 assertEquals(false, user.isEmailVerified(), "Email verified");
@@ -123,8 +125,9 @@ public class DbUserProviterTest {
                 assertEquals("Unicorn", user.getLastName(), "Last name");
                 assertEquals(false, user.isEnabled(), "Enabled");
                 assertNotNull(user.getAttributes().get("updated"), "Updated");
-                assertArrayEquals(Arrays.asList("my value").toArray(), user.getAttributes().get("my_attr").toArray(),
+                assertArrayEquals(Arrays.asList("teleport").toArray(), user.getAttributes().get("ability").toArray(),
                                 "Custom attribute");
+                assertEquals(0, user.getRequiredActions().size(), "Required actions");
         }
 
         @Test
@@ -136,7 +139,7 @@ public class DbUserProviterTest {
                 SynchronizationResultRepresentation result = realm.userStorage().syncUsers(USER_PROVIDER_ID,
                                 "triggerChangedUsersSync");
 
-                assertEquals(0, result.getAdded(), "Added");
+                assertEquals(1, result.getAdded(), "Added");
                 assertEquals(1, result.getUpdated(), "Updated");
         }
 
@@ -151,7 +154,7 @@ public class DbUserProviterTest {
                 assertEquals("Wizard", user.getLastName(), "Last name");
                 assertEquals(false, user.isEnabled(), "Enabled");
                 assertNotNull(user.getAttributes().get("updated"), "Updated");
-                assertArrayEquals(Arrays.asList("my value").toArray(), user.getAttributes().get("my_attr").toArray(),
+                assertArrayEquals(Arrays.asList("spells").toArray(), user.getAttributes().get("ability").toArray(),
                                 "Custom attribute");
         }
 
@@ -179,7 +182,7 @@ public class DbUserProviterTest {
                 AuthzClient authzClient = AuthzClient.create(configuration);
 
                 try {
-                        AccessTokenResponse response = authzClient.obtainAccessToken("uni", "dungeons&dragons");
+                        AccessTokenResponse response = authzClient.obtainAccessToken("diana", "JavelinStaff");
                         assertNotNull(response.getToken(), "ID Token");
                 } catch (HttpResponseException e) {
                         fail("Invalid credential", e);

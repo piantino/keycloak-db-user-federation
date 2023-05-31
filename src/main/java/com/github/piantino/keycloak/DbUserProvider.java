@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.credential.PasswordCredentialProviderFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
@@ -18,8 +19,8 @@ import com.github.piantino.keycloak.exception.DbUserProviderException;
 
 public class DbUserProvider implements UserStorageProvider, ImportedUserValidation {
 
-    public enum USER_ATTR {
-        username, email, email_verified, enabled, first_name, last_name, updated
+    public enum Column {
+        username, email, email_verified, enabled, first_name, last_name, temp_password, required_actions, updated
     }
 
     public enum Importation {
@@ -27,9 +28,10 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     }
 
     private static final Logger LOGGER = Logger.getLogger(DbUserProvider.class);
-    
-    private static final List<String> USER_ATTR_KEYS = Arrays.asList(USER_ATTR.values()).stream().map(a -> a.name()).collect(Collectors.toList());
-    
+
+    private static final List<String> Column_KEYS = Arrays.asList(Column.values()).stream().map(a -> a.name())
+            .collect(Collectors.toList());
+
     private KeycloakSession session;
     private ComponentModel model;
 
@@ -39,32 +41,31 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     }
 
     public Importation importUser(RealmModel realm, ComponentModel model, Map<String, Object> data) {
-        String username = (String) data.get(USER_ATTR.username.name());
-
-        Importation importation = Importation.UPDATED;
-
+        String username = (String) data.get(Column.username.name());
         UserModel user = session.userLocalStorage().getUserByUsername(realm, username);
-        
+
+        Importation importation;
+
         if (user == null) {
             user = session.userLocalStorage().addUser(realm, username);
             user.setFederationLink(model.getId());
             importation = Importation.ADDED;
         } else if (!model.getId().equals(user.getFederationLink())) {
             throw new DbUserProviderException("Local user not created from importation: " + username);
+        } else {
+            importation = Importation.UPDATED;
         }
 
-        user.setEmail((String) data.get(USER_ATTR.email.name()));
-        user.setEmailVerified(toBoolean(data, USER_ATTR.email_verified.name()));
-        user.setEnabled(toBoolean(data, USER_ATTR.enabled.name()));
-        user.setFirstName((String) data.get(USER_ATTR.first_name.name()));
-        user.setLastName((String) data.get(USER_ATTR.last_name.name()));
-        user.setSingleAttribute(USER_ATTR.updated.name(), ((Timestamp) data.get(USER_ATTR.updated.name())).toString());
+        user.setEmail((String) data.get(Column.email.name()));
+        user.setEmailVerified(toBoolean(data, Column.email_verified));
+        user.setEnabled(toBoolean(data, Column.enabled));
+        user.setFirstName((String) data.get(Column.first_name.name()));
+        user.setLastName((String) data.get(Column.last_name.name()));
+        user.setSingleAttribute(Column.updated.name(), ((Timestamp) data.get(Column.updated.name())).toString());
 
-        for(String key : data.keySet()) {
-            if (!USER_ATTR_KEYS.contains(key)) {
-                user.setSingleAttribute(key, (String) data.get(key));
-            }
-        }
+        updateAttributes(user, data);
+        addRequiredActions(user, data);
+        createCredential(realm, user, data);
 
         return importation;
     }
@@ -81,8 +82,48 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         return user;
     }
 
-    private boolean toBoolean(Map<String, Object> data, String key) {
-        return data.get(key) != null ? (Boolean) data.get(key) : false;
+    private void updateAttributes(UserModel user, Map<String, Object> data) {
+        for (String key : data.keySet()) {
+            if (!Column_KEYS.contains(key)) {
+                user.setSingleAttribute(key, (String) data.get(key));
+            }
+        }
+    }
+
+    private void createCredential(RealmModel realm, UserModel user, Map<String, Object> data) {
+        if (hasColumn(data, Column.temp_password)) {
+            // PasswordCredentialProvider passwordProvider =
+            // session.getProvider(PasswordCredentialProvider.class);
+            PasswordCredentialProviderFactory f = new PasswordCredentialProviderFactory();
+            f.create(session).createCredential(realm, user, (String) data.get(Column.temp_password.name()));
+        }
+    }
+
+    private void addRequiredActions(UserModel user, Map<String, Object> data) {
+        if (hasColumn(data, Column.required_actions)) {
+            String value = (String) data.get(Column.required_actions.name());
+
+            if (value.isBlank()) {
+                return;
+            }
+
+            for (String action : value.split(",")) {
+                try {
+                    UserModel.RequiredAction requiredAction = UserModel.RequiredAction.valueOf(action.trim());
+                    user.addRequiredAction(requiredAction);
+                } catch(IllegalArgumentException e ) {
+                    throw new DbUserProviderException("Invalid required action: " + action, e);
+                }
+            }
+        }
+    }
+
+    private boolean toBoolean(Map<String, Object> data, Column column) {
+        return hasColumn(data, column) ? (Boolean) data.get(column.name()) : false;
+    }
+
+    private boolean hasColumn(Map<String, Object> data, Column column) {
+        return data.get(column.name()) != null;
     }
 
 }

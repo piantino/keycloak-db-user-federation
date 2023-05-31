@@ -800,10 +800,10 @@
             "60"
           ],
           "syncSql": [
-            "SELECT username, email, email_verified, first_name, last_name, enabled, updated, my_attr FROM users"
+            "SELECT username, email, email_verified, first_name, last_name, enabled, temp_password, required_actions, updated, ability FROM users"
           ],
           "syncSinceSql": [
-            "SELECT username, email, email_verified, first_name, last_name, enabled, updated, my_attr FROM users WHERE updated > ?"
+            "SELECT username, email, email_verified, first_name, last_name, enabled, updated, ability FROM users WHERE updated > ?"
           ]
         }
       }

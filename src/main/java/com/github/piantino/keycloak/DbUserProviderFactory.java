@@ -22,6 +22,8 @@ import org.keycloak.models.KeycloakSessionTask;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.provider.ProviderConfigProperty;
+import org.keycloak.services.DefaultKeycloakSession;
+import org.keycloak.services.DefaultKeycloakSessionFactory;
 import org.keycloak.storage.UserStorageProviderFactory;
 import org.keycloak.storage.UserStorageProviderModel;
 import org.keycloak.storage.user.ImportSynchronization;
@@ -120,6 +122,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                             RealmModel currentRealm = session.realms().getRealm(realmId);
                             session.getContext().setRealm(currentRealm);
 
+                            // TODO: Not work session.getProvider(DbUserProvider.class)
                             DbUserProvider provider = create(session, model);
 
                             try {
@@ -132,7 +135,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                             } catch (Throwable e) {
                                 result.increaseFailed();
                                 LOGGER.errorv(e, "Error on import {0}",
-                                        data.get(DbUserProvider.USER_ATTR.username.name()));
+                                        data.get(DbUserProvider.Column.username.name()));
                             }
                         }
                     });
