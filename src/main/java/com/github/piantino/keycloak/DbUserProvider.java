@@ -2,8 +2,10 @@ package com.github.piantino.keycloak;
 
 import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.jboss.logging.Logger;
@@ -12,6 +14,8 @@ import org.keycloak.credential.PasswordCredentialProviderFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.models.UserModel.RequiredAction;
+import org.keycloak.services.validation.Validation;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.user.ImportedUserValidation;
 
@@ -42,6 +46,11 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
 
     public Importation importUser(RealmModel realm, ComponentModel model, Map<String, Object> data) {
         String username = (String) data.get(Column.username.name());
+        String email = (String) data.get(Column.email.name());
+
+        validateDbData(username, email, data);
+        Set<RequiredAction> actions = getRequiredActions(data);
+
         UserModel user = session.userLocalStorage().getUserByUsername(realm, username);
 
         Importation importation;
@@ -56,7 +65,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
             importation = Importation.UPDATED;
         }
 
-        user.setEmail((String) data.get(Column.email.name()));
+        user.setEmail(email);
         user.setEmailVerified(toBoolean(data, Column.email_verified));
         user.setEnabled(toBoolean(data, Column.enabled));
         user.setFirstName((String) data.get(Column.first_name.name()));
@@ -64,7 +73,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         user.setSingleAttribute(Column.updated.name(), ((Timestamp) data.get(Column.updated.name())).toString());
 
         updateAttributes(user, data);
-        addRequiredActions(user, data);
+        addRequiredActions(user, actions);
         createCredential(realm, user, data);
 
         return importation;
@@ -80,6 +89,25 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         // TODO: Check if the user exists in the external source
         // Return null to remove localy UserModel
         return user;
+    }
+
+    private void validateDbData(String username, String email, Map<String, Object> data) {
+        if (!Validation.isUsernameValid(username)) {
+            throw new DbUserProviderException("User with invalid user name: " + username);
+        }
+
+        if (!Validation.isEmailValid(email)) {
+            throw new DbUserProviderException("User with invalid email: " + username);
+        }
+
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            Object value = entry.getValue();
+
+            if (value != null && value.getClass().equals(String.class)
+                    && Validation.isBlank((String) value)) {
+                throw new DbUserProviderException("User with blank field " + entry.getKey() + ": " + username);
+            }
+        }
     }
 
     private void updateAttributes(UserModel user, Map<String, Object> data) {
@@ -99,23 +127,28 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         }
     }
 
-    private void addRequiredActions(UserModel user, Map<String, Object> data) {
+    private void addRequiredActions(UserModel user, Set<UserModel.RequiredAction> actions) {
+        for (UserModel.RequiredAction action : actions) {
+            user.addRequiredAction(action);
+        }
+    }
+
+    private Set<UserModel.RequiredAction> getRequiredActions(Map<String, Object> data) {
+        Set<UserModel.RequiredAction> actions = new HashSet<>();
+
         if (hasColumn(data, Column.required_actions)) {
             String value = (String) data.get(Column.required_actions.name());
-
-            if (value.isBlank()) {
-                return;
-            }
 
             for (String action : value.split(",")) {
                 try {
                     UserModel.RequiredAction requiredAction = UserModel.RequiredAction.valueOf(action.trim());
-                    user.addRequiredAction(requiredAction);
-                } catch(IllegalArgumentException e ) {
-                    throw new DbUserProviderException("Invalid required action: " + action, e);
+                    actions.add(requiredAction);
+                } catch (IllegalArgumentException e) {
+                    throw new DbUserProviderException("Invalid required action: " + action);
                 }
             }
         }
+        return actions;
     }
 
     private boolean toBoolean(Map<String, Object> data, Column column) {

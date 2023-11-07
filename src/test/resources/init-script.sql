@@ -9,7 +9,7 @@ CREATE TABLE users (
     enabled          boolean     NOT NULL DEFAULT true,
     temp_password    varchar(40),
     required_actions varchar(80),
-    updated          timestamp   NOT NULL,
+    updated          timestamp   NOT NULL DEFAULT now(),
     -- Custom attributes
     ability          varchar(40)
 );
@@ -20,8 +20,8 @@ INSERT INTO users (username, email, email_verified, first_name, last_name, temp_
 INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, required_actions, updated)
     VALUES ('eric', 'eric@fighter.com', true, 'Eric', 'Fighter', 'GriffonShield', 'UPDATE_PASSWORD , UPDATE_PROFILE', now());
 
-INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, required_actions, updated)
-    VALUES ('diana', 'diana@monk.com', true, 'Diana', 'Monk', 'JavelinStaff', '', now());
+INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, updated)
+    VALUES ('diana', 'diana@monk.com', true, 'Diana', 'Monk', 'JavelinStaff', now());
 
 INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, required_actions, updated)
     VALUES ('hank', 'hank@ranger.com', true, 'Hank', 'Ranger', 'EnergyBow', 'UPDATE_PROFILE', now());
@@ -29,11 +29,26 @@ INSERT INTO users (username, email, email_verified, first_name, last_name, temp_
 INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, required_actions, updated)
     VALUES ('presto', 'presto@wizard.com', true, 'Presto', 'Wizard', 'HatofManySpells', 'UPDATE_PROFILE,', now());
 
-INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, required_actions, updated)
-    VALUES ('sheila', 'sheila@thief.com', true, 'Sheila', 'Rogue', 'CloakofInvisibility', '', now());
+INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, updated)
+    VALUES ('sheila', 'sheila@thief.com', true, 'Sheila', 'Rogue', 'CloakofInvisibility', now());
 
 INSERT INTO users (username, email, email_verified, first_name, last_name, enabled, updated, ability)
     VALUES ('uni', 'uni@unicorn.com', false, 'Uni', 'Unicorn', false, now(), 'teleport');
 
-INSERT INTO users (username, email, email_verified, first_name, last_name, enabled, updated, required_actions)
-    VALUES ('invalid', 'invalid@error.com', false, 'Invalid', 'Erro', false, now(), 'INVALID_ACTION');
+
+-- Invalid users
+
+INSERT INTO users (username, email, first_name, last_name)
+    VALUES ('', 'invalid@error.com', 'Invalid', 'Erro');
+
+INSERT INTO users (username, email, first_name, last_name)
+    VALUES ('invalid_email', 'invalid', 'Invalid', 'Erro');
+
+INSERT INTO users (username, email, first_name, last_name)
+    VALUES ('invalid_first_name', 'invalid@error.com', '', 'Invalid first name');
+
+INSERT INTO users (username, email, first_name, last_name)
+    VALUES ('invalid_last_name', 'invalid@error.com', 'Invalid', '');
+
+INSERT INTO users (username, email, first_name, last_name, required_actions)
+    VALUES ('invalid_action', 'invalid@error.com', 'Invalid', 'Erro', 'INVALID_ACTION');

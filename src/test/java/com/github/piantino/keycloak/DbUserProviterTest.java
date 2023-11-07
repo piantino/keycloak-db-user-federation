@@ -97,7 +97,7 @@ public class DbUserProviterTest {
 
                 assertEquals(7, result.getAdded(), "Added");
                 assertEquals(0, result.getUpdated(), "Updated");
-                assertEquals(1, result.getFailed(), "Failed");
+                assertEquals(5, result.getFailed(), "Failed");
         }
 
         @Test

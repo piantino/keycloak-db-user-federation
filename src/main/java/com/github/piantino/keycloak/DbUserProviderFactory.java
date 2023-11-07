@@ -22,13 +22,12 @@ import org.keycloak.models.KeycloakSessionTask;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.provider.ProviderConfigProperty;
-import org.keycloak.services.DefaultKeycloakSession;
-import org.keycloak.services.DefaultKeycloakSessionFactory;
 import org.keycloak.storage.UserStorageProviderFactory;
 import org.keycloak.storage.UserStorageProviderModel;
 import org.keycloak.storage.user.ImportSynchronization;
 import org.keycloak.storage.user.SynchronizationResult;
 
+import com.github.piantino.keycloak.DbUserProvider.Column;
 import com.github.piantino.keycloak.DbUserProvider.Importation;
 import com.github.piantino.keycloak.datasource.DataSouceConfiguration;
 import com.github.piantino.keycloak.datasource.DataSourceProvider;
@@ -112,7 +111,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                     for (int i = 1; i <= columns; ++i) {
                         data.put(md.getColumnName(i).toLowerCase(), rs.getObject(i));
                     }
-                    LOGGER.debugv("User {0}", data);
+                    LOGGER.debugv("Syncing user {0}", data.get(Column.username.toString()));
 
                     // Process each user in it's own transaction to avoid global fail
                     KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
