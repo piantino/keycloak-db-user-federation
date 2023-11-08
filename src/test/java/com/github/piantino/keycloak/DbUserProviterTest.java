@@ -3,7 +3,6 @@ package com.github.piantino.keycloak;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -16,6 +15,8 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
@@ -25,7 +26,6 @@ import org.keycloak.authorization.client.Configuration;
 import org.keycloak.authorization.client.util.HttpResponseException;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.SynchronizationResultRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.testcontainers.containers.GenericContainer;
@@ -171,9 +171,19 @@ public class DbUserProviterTest {
                 assertEquals(201, response.getStatus(), "Status HTTP created");
         }
 
-        @Test
+        @ParameterizedTest
         @Order(6)
-        public void validatePasswordImportation() {
+        @CsvSource(value = {
+                        "bobby,ThunderClub,INVALID",
+                        "eric,GriffonShield,INVALID",
+                        "diana,JavelinStaff,INVALID",
+                        "hank,EnergyBow,INVALID",
+                        "presto,HatofManySpells,INVALID",
+                        "sheila,CloakofInvisibility,CORRECT",
+                        "uni,NoPassword,INVALID",
+                        "invalid_user,invalid,INVALID"
+        })
+        public void validatePasswordImportation(String username, String password, String expected) {
                 Map<String, Object> credentials = new HashMap<String, Object>();
                 credentials.put("secret", "SoBy2IbD8fYPPP2iM6sNNqVcrkl57Qie");
                 Configuration configuration = new Configuration(keycloak.getAuthServerUrl(), "db-user-realm", "my-app",
@@ -182,10 +192,18 @@ public class DbUserProviterTest {
                 AuthzClient authzClient = AuthzClient.create(configuration);
 
                 try {
-                        AccessTokenResponse response = authzClient.obtainAccessToken("diana", "JavelinStaff");
+                        AccessTokenResponse response = authzClient.obtainAccessToken(username, password);
+
+                        if (expected.equals("INVALID")) {
+                                fail("Expected invalid credential");
+                        }
                         assertNotNull(response.getToken(), "ID Token");
+
                 } catch (HttpResponseException e) {
-                        fail("Invalid credential", e);
+                        if (expected.equals("CORRECT")) {
+                                fail("Invalid credential", e);
+                        }
+                        assertEquals(400, e.getStatusCode(), "Status HTTP");
                 }
 
         }

@@ -15,19 +15,19 @@ CREATE TABLE users (
 );
 
 INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, required_actions, updated)
-    VALUES ('booby', 'bobby@barbarian.com', true, 'Bobby', 'Barbarian', 'ThunderClub', 'UPDATE_PASSWORD,UPDATE_PROFILE,TERMS_AND_CONDITIONS', now());
+    VALUES ('bobby', 'bobby@barbarian.com', true, 'Bobby', 'Barbarian', 'ThunderClub', 'VERIFY_EMAIL, UPDATE_PROFILE,UPDATE_PASSWORD , TERMS_AND_CONDITIONS ', now());
 
 INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, required_actions, updated)
-    VALUES ('eric', 'eric@fighter.com', true, 'Eric', 'Fighter', 'GriffonShield', 'UPDATE_PASSWORD , UPDATE_PROFILE', now());
-
-INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, updated)
-    VALUES ('diana', 'diana@monk.com', true, 'Diana', 'Monk', 'JavelinStaff', now());
+    VALUES ('eric', 'eric@fighter.com', true, 'Eric', 'Fighter', 'GriffonShield', 'VERIFY_EMAIL', now());
 
 INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, required_actions, updated)
-    VALUES ('hank', 'hank@ranger.com', true, 'Hank', 'Ranger', 'EnergyBow', 'UPDATE_PROFILE', now());
+    VALUES ('diana', 'diana@monk.com', true, 'Diana', 'Monk', 'JavelinStaff', 'UPDATE_PROFILE', now());
 
 INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, required_actions, updated)
-    VALUES ('presto', 'presto@wizard.com', true, 'Presto', 'Wizard', 'HatofManySpells', 'UPDATE_PROFILE,', now());
+    VALUES ('hank', 'hank@ranger.com', true, 'Hank', 'Ranger', 'EnergyBow', 'UPDATE_PASSWORD', now());
+
+INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, required_actions, updated)
+    VALUES ('presto', 'presto@wizard.com', true, 'Presto', 'Wizard', 'HatofManySpells', 'VERIFY_PROFILE', now());
 
 INSERT INTO users (username, email, email_verified, first_name, last_name, temp_password, updated)
     VALUES ('sheila', 'sheila@thief.com', true, 'Sheila', 'Rogue', 'CloakofInvisibility', now());
