@@ -18,13 +18,16 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.keycloak.TokenVerifier;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.authorization.client.AuthzClient;
 import org.keycloak.authorization.client.Configuration;
 import org.keycloak.authorization.client.util.HttpResponseException;
+import org.keycloak.common.VerificationException;
 import org.keycloak.representations.AccessTokenResponse;
+import org.keycloak.representations.IDToken;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.SynchronizationResultRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
@@ -183,7 +186,8 @@ public class DbUserProviterTest {
                         "uni,NoPassword,INVALID",
                         "invalid_user,invalid,INVALID"
         })
-        public void validatePasswordImportation(String username, String password, String expected) {
+        public void validatePasswordImportation(String username, String password, String expected)
+                        throws VerificationException {
                 Map<String, Object> credentials = new HashMap<String, Object>();
                 credentials.put("secret", "SoBy2IbD8fYPPP2iM6sNNqVcrkl57Qie");
                 Configuration configuration = new Configuration(keycloak.getAuthServerUrl(), "db-user-realm", "my-app",
@@ -199,12 +203,15 @@ public class DbUserProviterTest {
                         }
                         assertNotNull(response.getToken(), "ID Token");
 
+                        IDToken token = TokenVerifier.create(response.getToken(), IDToken.class).getToken();
+                        assertEquals(username, token.getPreferredUsername(), "Username");
+
                 } catch (HttpResponseException e) {
                         if (expected.equals("CORRECT")) {
                                 fail("Invalid credential", e);
                         }
-                        assertEquals(400, e.getStatusCode(), "Status HTTP");
+                        int expectedStatus = username.equals("invalid_user") ? 401 : 400;
+                        assertEquals(expectedStatus, e.getStatusCode(), "Status HTTP");
                 }
-
         }
 }
