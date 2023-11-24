@@ -36,6 +36,9 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     private static final List<String> Column_KEYS = Arrays.asList(Column.values()).stream().map(a -> a.name())
             .collect(Collectors.toList());
 
+    // For DB without support to boolean data type
+    private static final String TRUE_VALUE = "y";
+
     private KeycloakSession session;
     private ComponentModel model;
 
@@ -96,7 +99,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
             throw new DbUserProviderException("User with invalid user name: " + username);
         }
 
-        if (!Validation.isEmailValid(email)) {
+		if (email != null && !Validation.isEmailValid(email)) {
             throw new DbUserProviderException("User with invalid email: " + username);
         }
 
@@ -152,7 +155,14 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     }
 
     private boolean toBoolean(Map<String, Object> data, Column column) {
-        return hasColumn(data, column) ? (Boolean) data.get(column.name()) : false;
+        if (!hasColumn(data, column)) {
+            return false;
+        }
+        Object value = data.get(column.name());
+        if (value instanceof String) {
+            return TRUE_VALUE.equals(((String) value));
+        }
+        return (Boolean) value;
     }
 
     private boolean hasColumn(Map<String, Object> data, Column column) {
