@@ -99,7 +99,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
             throw new DbUserProviderException("User with invalid user name: " + username);
         }
 
-		if (email != null && !Validation.isEmailValid(email)) {
+        if (email != null && !Validation.isEmailValid(email)) {
             throw new DbUserProviderException("User with invalid email: " + username);
         }
 
@@ -114,11 +114,10 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     }
 
     private void updateAttributes(UserModel user, Map<String, Object> data) {
-        for (String key : data.keySet()) {
-            if (!Column_KEYS.contains(key)) {
-                user.setSingleAttribute(key, (String) data.get(key));
-            }
-        }
+        data.entrySet().stream()
+                .filter(entry -> !Column_KEYS.contains(entry.getKey()))
+                .filter(entry -> entry.getValue() != null)
+                .forEach(entry -> user.setSingleAttribute(entry.getKey(), entry.getValue().toString()));
     }
 
     private void createCredential(RealmModel realm, UserModel user, Map<String, Object> data) {
