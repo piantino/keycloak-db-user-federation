@@ -6,6 +6,8 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -26,6 +28,7 @@ import org.keycloak.storage.UserStorageProviderFactory;
 import org.keycloak.storage.UserStorageProviderModel;
 import org.keycloak.storage.user.ImportSynchronization;
 import org.keycloak.storage.user.SynchronizationResult;
+import org.keycloak.utils.StringUtil;
 
 import com.github.piantino.keycloak.DbUserProvider.Column;
 import com.github.piantino.keycloak.DbUserProvider.Importation;
@@ -89,7 +92,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     }
 
     private SynchronizationResult importUsers(KeycloakSessionFactory sessionFactory, String realmId,
-            UserStorageProviderModel model, String sql, Date lastSync) {
+            UserStorageProviderModel model, String sql, Date lastSync) {      
 
         SynchronizationResult result = new SynchronizationResult();
 
@@ -111,7 +114,9 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                     for (int i = 1; i <= columns; ++i) {
                         data.put(md.getColumnName(i).toLowerCase(), rs.getObject(i));
                     }
-                    LOGGER.debugv("Syncing user {0}", data.get(Column.username.toString()));
+                    String username = (String) data.get(Column.username.toString());
+
+                    LOGGER.debugv("Syncing user {0}", username);
 
                     // Process each user in it's own transaction to avoid global fail
                     KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
@@ -125,7 +130,10 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                             DbUserProvider provider = create(session, model);
 
                             try {
-                                Importation importation = provider.importUser(currentRealm, model, data);
+								
+                                List<String> roles = getRoles(model, con, username);
+                                Importation importation = provider.importUser(currentRealm, model, data, roles);
+
                                 if (importation == Importation.ADDED) {
                                     result.increaseAdded();
                                 } else {
@@ -144,6 +152,28 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
             throw new DbUserProviderException("Error on connect to database", e);
         }
         return result;
+    }
+
+    private List<String> getRoles(UserStorageProviderModel model, Connection con, String username) throws SQLException {
+        String roleSql = model.get(DataSouceConfiguration.SYNC_ROLE_SQL);
+
+        if (StringUtil.isBlank(roleSql)) {
+            return Collections.emptyList();
+        }
+
+        List<String> roles = new ArrayList<>();
+
+        try (PreparedStatement ps = con.prepareStatement(roleSql);) {
+
+            ps.setString(1, username);
+
+            try (ResultSet rs = ps.executeQuery();) {
+                while (rs.next()) {
+                    roles.add(rs.getString("name"));
+                }
+            }
+        }
+        return roles;
     }
 
     private AgroalDataSource getDataSource(UserStorageProviderModel model) {

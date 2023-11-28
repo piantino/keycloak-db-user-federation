@@ -13,8 +13,10 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.PasswordCredentialProviderFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.UserModel.RequiredAction;
+import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.services.validation.Validation;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.user.ImportedUserValidation;
@@ -47,7 +49,8 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         this.model = model;
     }
 
-    public Importation importUser(RealmModel realm, ComponentModel model, Map<String, Object> data) {
+    public Importation importUser(RealmModel realm, ComponentModel model, Map<String, Object> data,
+            List<String> roles) {
         String username = (String) data.get(Column.username.name());
         String email = (String) data.get(Column.email.name());
 
@@ -78,8 +81,43 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         updateAttributes(user, data);
         addRequiredActions(user, actions);
         createCredential(realm, user, data);
+        importRoles(realm, user, roles);
 
         return importation;
+    }
+
+    private void importRoles(RealmModel realm, UserModel user, List<String> roles) {
+        RoleModel roleRoot = getRoleRoot(realm);
+
+        List<RoleModel> actualRoles = user.getRealmRoleMappingsStream().collect(Collectors.toList());
+        List<RoleModel> newRoles = roles.stream().map(roleName -> getRole(realm, roleRoot, roleName))
+                .collect(Collectors.toList());
+
+        newRoles.stream().filter(r -> !actualRoles.contains(r)).forEach(user::grantRole);
+        actualRoles.stream().filter(r -> !newRoles.contains(r)).forEach(user::deleteRoleMapping);
+    }
+
+    private RoleModel getRole(RealmModel realm, RoleModel roleRoot, String roleName) {
+        RoleModel role = KeycloakModelUtils.getRoleFromString(realm, roleName);
+
+        if (role == null) {
+            role = session.roleStorageManager().addRealmRole(realm, roleName);
+            role.setDescription("db-user-provider");
+
+            roleRoot.addCompositeRole(role);
+        }
+        return role;
+    }
+
+    private RoleModel getRoleRoot(RealmModel realm) {
+        String rootRoleName = "db-user-provider-roles";
+        RoleModel roleRoot = KeycloakModelUtils.getRoleFromString(realm, rootRoleName);
+
+        if (roleRoot == null) {
+            roleRoot = session.roleStorageManager().addRealmRole(realm, rootRoleName);
+            roleRoot.setDescription("db-user-provider");
+        }
+        return roleRoot;
     }
 
     @Override
