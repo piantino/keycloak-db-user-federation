@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import javax.ws.rs.core.Response;
@@ -22,6 +23,7 @@ import org.keycloak.TokenVerifier;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.RoleResource;
 import org.keycloak.authorization.client.AuthzClient;
 import org.keycloak.authorization.client.Configuration;
 import org.keycloak.authorization.client.util.HttpResponseException;
@@ -135,6 +137,20 @@ public class DbUserProviterTest {
 
         @Test
         @Order(3)
+        public void valitateRoleImportation() {
+                RoleResource rootRole = realm.roles().get("db-user-provider-roles");
+                assertEquals(1, rootRole.getRealmRoleComposites().size(), "Root role");
+
+                RoleResource role = realm.roles().get("leader");
+                assertNotNull(role, "Leader role");
+
+                Set<UserRepresentation> roleUserMembers = role.getRoleUserMembers();
+                assertEquals(1, roleUserMembers.size(), "There can be only one");
+                assertEquals("hank", roleUserMembers.stream().map(u -> u.getUsername()).findFirst().get(), "Role");
+        }
+
+        @Test
+        @Order(4)
         public void importChangedUsersFromDB() {
                 JdbcDatabaseDelegate containerDelegate = new JdbcDatabaseDelegate(postgres, "");
                 ScriptUtils.runInitScript(containerDelegate, "update-script.sql");
@@ -143,11 +159,31 @@ public class DbUserProviterTest {
                                 "triggerChangedUsersSync");
 
                 assertEquals(1, result.getAdded(), "Added");
-                assertEquals(1, result.getUpdated(), "Updated");
+                assertEquals(2, result.getUpdated(), "Updated");
         }
 
         @Test
-        @Order(4)
+        @Order(5)
+        public void valitateRoleChanged() {
+                RoleResource rootRole = realm.roles().get("db-user-provider-roles");
+                assertEquals(2, rootRole.getRealmRoleComposites().size(), "Root role");
+
+                RoleResource role = realm.roles().get("leader");
+                assertNotNull(role, "Leader role");
+
+                Set<UserRepresentation> roleUserMembers = role.getRoleUserMembers();
+                assertEquals(0, roleUserMembers.size(), "Role removed");
+
+                role = realm.roles().get("ex-leader");
+                assertNotNull(role, "Ex-leader role");
+
+                roleUserMembers = role.getRoleUserMembers();
+                assertEquals(1, roleUserMembers.size(), "Role member");
+                assertEquals("hank", roleUserMembers.stream().map(u -> u.getUsername()).findFirst().get(), "Role");
+        }
+
+        @Test
+        @Order(6)
         public void validateUpdate() {
                 UserRepresentation user = realm.users().search("uni").get(0);
 
@@ -162,7 +198,7 @@ public class DbUserProviterTest {
         }
 
         @Test
-        @Order(5)
+        @Order(7)
         public void createAppClient() {
                 ClientRepresentation clientRepresentation = new ClientRepresentation();
                 clientRepresentation.setId("my-app");
@@ -175,7 +211,7 @@ public class DbUserProviterTest {
         }
 
         @ParameterizedTest
-        @Order(6)
+        @Order(8)
         @CsvSource(value = {
                         "bobby,ThunderClub,INVALID",
                         "eric,GriffonShield,INVALID",

@@ -151,6 +151,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         } catch (SQLException e) {
             throw new DbUserProviderException("Error on connect to database", e);
         }
+        LOGGER.infov("{0}, lastSync: {1}", result, lastSync);
         return result;
     }
 

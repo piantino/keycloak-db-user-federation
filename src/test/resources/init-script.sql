@@ -53,3 +53,13 @@ INSERT INTO users (username, email, first_name, last_name)
 
 INSERT INTO users (username, email, first_name, last_name, required_actions)
     VALUES ('invalid_action', 'invalid@error.com', 'Invalid', 'Erro', 'INVALID_ACTION');
+
+-- Roles
+
+CREATE TABLE roles (
+    username  varchar(40) NOT NULL,
+    name      varchar(40) NOT NULL
+);
+
+INSERT INTO roles (username, name) 
+    VALUES ('hank', 'leader');
