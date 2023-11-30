@@ -11,6 +11,7 @@ public class DataSouceConfiguration {
 
     public static final String SYNC_SQL = "syncSql";
     public static final String SYNC_SINCE_SQL = "syncSinceSql";
+    public static final String SYNC_ONE_SQL = "syncOneSql";
     public static final String SYNC_ROLE_SQL = "syncRoleSql";
 
     public static List<ProviderConfigProperty> create() {
@@ -59,6 +60,10 @@ public class DataSouceConfiguration {
                 .property()
                 .name(SYNC_SINCE_SQL)
                 .label(SYNC_SINCE_SQL)
+                .type(ProviderConfigProperty.STRING_TYPE).add()
+                .property()
+                .name(SYNC_ONE_SQL)
+                .label(SYNC_ONE_SQL)
                 .type(ProviderConfigProperty.STRING_TYPE).add()
                 .property()
                 .name(SYNC_ROLE_SQL)

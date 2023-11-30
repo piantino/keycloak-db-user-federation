@@ -7,7 +7,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -15,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
@@ -70,7 +70,10 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
             UserStorageProviderModel model) {
 
         String sql = model.get(DataSouceConfiguration.SYNC_SQL);
-        return importUsers(sessionFactory, realmId, model, sql, null);
+        SynchronizationResult result = importUsers(sessionFactory, realmId, model, sql, (ps) -> {
+        });
+        LOGGER.infov("Sync all: {0}", result);
+        return result;
     }
 
     @Override
@@ -80,7 +83,17 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         LOGGER.debugv("Search users updated since {0}", lastSync);
 
         String sql = model.get(DataSouceConfiguration.SYNC_SINCE_SQL);
-        return importUsers(sessionFactory, realmId, model, sql, lastSync);
+        Timestamp timeStamp = new Timestamp(lastSync.getTime());
+
+        SynchronizationResult result = importUsers(sessionFactory, realmId, model, sql, (ps) -> {
+            try {
+                ps.setTimestamp(1, timeStamp);
+            } catch (SQLException e) {
+                throw new DbUserProviderException("Error configure sync since " + timeStamp, e);
+            }
+        });
+        LOGGER.infov("Sync since {0}: {1}", lastSync, result);
+        return result;
     }
 
     @Override
@@ -91,8 +104,23 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         }
     }
 
+    public SynchronizationResult syncUsername(String username, KeycloakSessionFactory sessionFactory, String realmId,
+            UserStorageProviderModel model) {
+
+        String sql = model.get(DataSouceConfiguration.SYNC_ONE_SQL);
+        SynchronizationResult result = importUsers(sessionFactory, realmId, model, sql, (ps) -> {
+            try {
+                ps.setString(1, username);
+            } catch (SQLException e) {
+                throw new DbUserProviderException("Error configure sync user " + username, e);
+            }
+        });
+        LOGGER.infov("Sync username {1}: {0}", username, result);
+        return result;
+    }
+
     private SynchronizationResult importUsers(KeycloakSessionFactory sessionFactory, String realmId,
-            UserStorageProviderModel model, String sql, Date lastSync) {      
+            UserStorageProviderModel model, String sql, Consumer<PreparedStatement> psConsumer) {
 
         SynchronizationResult result = new SynchronizationResult();
 
@@ -101,9 +129,8 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         try (Connection con = ds.getConnection();
                 PreparedStatement ps = con.prepareStatement(sql);) {
 
-            if (lastSync != null) {
-                ps.setTimestamp(1, new Timestamp(lastSync.getTime()));
-            }
+            psConsumer.accept(ps);
+
             try (ResultSet rs = ps.executeQuery();) {
 
                 ResultSetMetaData md = rs.getMetaData();
@@ -130,7 +157,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                             DbUserProvider provider = create(session, model);
 
                             try {
-								
+
                                 List<String> roles = getRoles(model, con, username);
                                 Importation importation = provider.importUser(currentRealm, model, data, roles);
 
@@ -151,7 +178,6 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         } catch (SQLException e) {
             throw new DbUserProviderException("Error on connect to database", e);
         }
-        LOGGER.infov("{0}, lastSync: {1}", result, lastSync);
         return result;
     }
 

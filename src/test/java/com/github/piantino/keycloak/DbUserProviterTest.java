@@ -1,6 +1,8 @@
 package com.github.piantino.keycloak;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,6 +35,7 @@ import org.keycloak.representations.IDToken;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.SynchronizationResultRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.storage.user.SynchronizationResult;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -42,6 +45,7 @@ import org.testcontainers.utility.MountableFile;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.github.piantino.keycloak.rest.DbUserResource;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
 
@@ -249,5 +253,25 @@ public class DbUserProviterTest {
                         int expectedStatus = username.equals("invalid_user") ? 401 : 400;
                         assertEquals(expectedStatus, e.getStatusCode(), "Status HTTP");
                 }
+        }
+
+        @Test
+        @Order(9)
+        public void syncUserWithApi() throws URISyntaxException {
+                String apiPath = keycloak.getAuthServerUrl() + "realms/db-user-realm/db-user/hank/sync";
+
+                Keycloak newClient = KeycloakBuilder.builder()
+                                .serverUrl(keycloak.getAuthServerUrl())
+                                .realm("db-user-realm")
+                                .clientId("admin-cli")
+                                .username("sheila")
+                                .password("CloakofInvisibility")
+                                .build();
+
+ 
+                DbUserResource resource = newClient.proxy(DbUserResource.class, new URI(apiPath));
+
+                SynchronizationResult result = resource.sync("hank");
+                assertEquals("0 imported users, 1 updated users", result.getStatus(), "Status");
         }
 }

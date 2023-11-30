@@ -805,6 +805,9 @@
           "syncSinceSql": [
             "SELECT username, email, email_verified, first_name, last_name, enabled, updated, ability FROM users WHERE updated > ?"
           ],
+          "syncOneSql": [
+            "SELECT username, email, email_verified, first_name, last_name, enabled, updated, ability FROM users WHERE username = ?"
+          ],
           "syncRoleSql": [
             "SELECT name FROM roles WHERE username = ?"
           ]
