@@ -57,7 +57,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
 
     @Override
     public DbUserProvider create(KeycloakSession session, ComponentModel model) {
-        return new DbUserProvider(session, model);
+        return new DbUserProvider(session);
     }
 
     @Override
@@ -115,7 +115,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                 throw new DbUserProviderException("Error configure sync user " + username, e);
             }
         });
-        LOGGER.infov("Sync username {1}: {0}", username, result);
+        LOGGER.infov("Sync username {0}: {1}", username, result);
         return result;
     }
 

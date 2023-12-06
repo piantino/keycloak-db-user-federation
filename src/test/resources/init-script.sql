@@ -36,6 +36,8 @@ INSERT INTO users (username, email, email_verified, first_name, last_name, temp_
 INSERT INTO users (username, email, email_verified, first_name, last_name, enabled, updated, ability)
     VALUES ('uni', 'uni@unicorn.com', 'n', 'Uni', 'Unicorn', false, now(), 'teleport');
 
+INSERT INTO users (username, email, email_verified, first_name, last_name, enabled, updated)
+    VALUES ('master', 'dungeon@master.com', 'y', 'Dungeon', 'Master', true, now());
 
 -- Invalid users
 

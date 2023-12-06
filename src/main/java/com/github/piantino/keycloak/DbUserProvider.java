@@ -1,6 +1,7 @@
 package com.github.piantino.keycloak;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -8,7 +9,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.PasswordCredentialProviderFactory;
 import org.keycloak.models.KeycloakSession;
@@ -33,8 +33,6 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         ADDED, UPDATED
     }
 
-    private static final Logger LOGGER = Logger.getLogger(DbUserProvider.class);
-
     private static final List<String> Column_KEYS = Arrays.asList(Column.values()).stream().map(a -> a.name())
             .collect(Collectors.toList());
 
@@ -42,11 +40,9 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     private static final String TRUE_VALUE = "y";
 
     private KeycloakSession session;
-    private ComponentModel model;
 
-    public DbUserProvider(KeycloakSession session, ComponentModel model) {
+    public DbUserProvider(KeycloakSession session) {
         this.session = session;
-        this.model = model;
     }
 
     public Importation importUser(RealmModel realm, ComponentModel model, Map<String, Object> data,
@@ -82,6 +78,8 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         addRequiredActions(user, actions);
         createCredential(realm, user, data);
         importRoles(realm, user, roles);
+
+        user.setSingleAttribute("synched", Instant.now().toString());
 
         return importation;
     }

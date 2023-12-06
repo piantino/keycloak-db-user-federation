@@ -11,6 +11,7 @@ import java.util.stream.Stream;
 
 import javax.ws.rs.core.Response;
 
+import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -35,7 +36,6 @@ import org.keycloak.representations.IDToken;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.SynchronizationResultRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
-import org.keycloak.storage.user.SynchronizationResult;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -104,7 +104,7 @@ public class DbUserProviterTest {
                 SynchronizationResultRepresentation result = realm.userStorage().syncUsers(USER_PROVIDER_ID,
                                 "triggerFullSync");
 
-                assertEquals(7, result.getAdded(), "Added");
+                assertEquals(8, result.getAdded(), "Added");
                 assertEquals(0, result.getUpdated(), "Updated");
                 assertEquals(5, result.getFailed(), "Failed");
         }
@@ -113,7 +113,7 @@ public class DbUserProviterTest {
         @Order(2)
         public void validateImportation() {
                 int userCount = realm.users().count();
-                assertEquals(7, userCount, "Users imported");
+                assertEquals(8, userCount, "Users imported");
 
                 UserRepresentation user = realm.users().search("presto").get(0);
 
@@ -190,7 +190,6 @@ public class DbUserProviterTest {
         @Order(6)
         public void validateUpdate() {
                 UserRepresentation user = realm.users().search("uni").get(0);
-
                 assertEquals("uni@unicorn.com", user.getEmail(), "Email");
                 assertEquals(false, user.isEmailVerified(), "Email verified");
                 assertEquals("Venger", user.getFirstName(), "First name");
@@ -203,6 +202,21 @@ public class DbUserProviterTest {
 
         @Test
         @Order(7)
+        public void syncUserWithApi() throws URISyntaxException {
+                JdbcDatabaseDelegate containerDelegate = new JdbcDatabaseDelegate(postgres, "");
+                ScriptUtils.runInitScript(containerDelegate, "update-script2.sql");
+
+                String apiPath = keycloak.getAuthServerUrl() + "realms/db-user-realm/db-user/";
+                DbUserResource resource = client.proxy(DbUserResource.class, new URI(apiPath));
+                resource.sync("master", null);
+                
+                UserRepresentation user = realm.users().search("master").get(0);
+
+                assertEquals(false, user.isEnabled(), "Enabled");
+        }
+
+        @Test
+        @Order(8)
         public void createAppClient() {
                 ClientRepresentation clientRepresentation = new ClientRepresentation();
                 clientRepresentation.setId("my-app");
@@ -215,7 +229,7 @@ public class DbUserProviterTest {
         }
 
         @ParameterizedTest
-        @Order(8)
+        @Order(9)
         @CsvSource(value = {
                         "bobby,ThunderClub,INVALID",
                         "eric,GriffonShield,INVALID",
@@ -255,23 +269,4 @@ public class DbUserProviterTest {
                 }
         }
 
-        @Test
-        @Order(9)
-        public void syncUserWithApi() throws URISyntaxException {
-                String apiPath = keycloak.getAuthServerUrl() + "realms/db-user-realm/db-user/hank/sync";
-
-                Keycloak newClient = KeycloakBuilder.builder()
-                                .serverUrl(keycloak.getAuthServerUrl())
-                                .realm("db-user-realm")
-                                .clientId("admin-cli")
-                                .username("sheila")
-                                .password("CloakofInvisibility")
-                                .build();
-
- 
-                DbUserResource resource = newClient.proxy(DbUserResource.class, new URI(apiPath));
-
-                SynchronizationResult result = resource.sync("hank");
-                assertEquals("0 imported users, 1 updated users", result.getStatus(), "Status");
-        }
 }
