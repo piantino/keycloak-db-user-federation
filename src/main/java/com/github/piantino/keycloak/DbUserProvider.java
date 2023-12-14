@@ -72,7 +72,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         user.setEnabled(toBoolean(data, Column.enabled));
         user.setFirstName((String) data.get(Column.first_name.name()));
         user.setLastName((String) data.get(Column.last_name.name()));
-        user.setSingleAttribute(Column.updated.name(), ((Timestamp) data.get(Column.updated.name())).toString());
+        user.setSingleAttribute(Column.updated.name(), toAttribute(data.get(Column.updated.name())));
 
         updateAttributes(user, data);
         addRequiredActions(user, actions);
@@ -153,7 +153,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         data.entrySet().stream()
                 .filter(entry -> !Column_KEYS.contains(entry.getKey()))
                 .filter(entry -> entry.getValue() != null)
-                .forEach(entry -> user.setSingleAttribute(entry.getKey(), entry.getValue().toString()));
+                .forEach(entry -> user.setSingleAttribute(entry.getKey(), toAttribute(entry.getValue())));
     }
 
     private void createCredential(RealmModel realm, UserModel user, Map<String, Object> data) {
@@ -198,6 +198,14 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
             return TRUE_VALUE.equals(((String) value));
         }
         return (Boolean) value;
+    }
+
+    private String toAttribute(Object value) {
+        if (value instanceof Timestamp) {
+            Timestamp time = (Timestamp) value;
+            return time.toInstant().toString();
+        }
+        return value.toString();
     }
 
     private boolean hasColumn(Map<String, Object> data, Column column) {
