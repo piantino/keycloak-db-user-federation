@@ -1,7 +1,7 @@
 package com.github.piantino.keycloak;
 
 import java.sql.Timestamp;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.PasswordCredentialProviderFactory;
 import org.keycloak.models.KeycloakSession;
@@ -32,6 +33,8 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     public enum Importation {
         ADDED, UPDATED
     }
+
+    private static final Logger LOGGER = Logger.getLogger(DbUserProvider.class);
 
     private static final List<String> Column_KEYS = Arrays.asList(Column.values()).stream().map(a -> a.name())
             .collect(Collectors.toList());
@@ -61,6 +64,10 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
             user = session.userLocalStorage().addUser(realm, username);
             user.setFederationLink(model.getId());
             importation = Importation.ADDED;
+            LOGGER.debugv("Created user {0}", username);
+
+            addRequiredActions(user, actions);
+            createCredential(realm, user, data);
         } else if (!model.getId().equals(user.getFederationLink())) {
             throw new DbUserProviderException("Local user not created from importation: " + username);
         } else {
@@ -75,11 +82,9 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         user.setSingleAttribute(Column.updated.name(), toAttribute(data.get(Column.updated.name())));
 
         updateAttributes(user, data);
-        addRequiredActions(user, actions);
-        createCredential(realm, user, data);
         importRoles(realm, user, roles);
 
-        user.setSingleAttribute("synched", Instant.now().toString());
+        user.setSingleAttribute("synched", LocalDateTime.now().toString());
 
         return importation;
     }
@@ -103,6 +108,8 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
             role.setDescription("db-user-provider");
 
             roleRoot.addCompositeRole(role);
+
+            LOGGER.debugv("Created role {0}", roleName);
         }
         return role;
     }
@@ -203,7 +210,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     private String toAttribute(Object value) {
         if (value instanceof Timestamp) {
             Timestamp time = (Timestamp) value;
-            return time.toInstant().toString();
+            return time.toLocalDateTime().toString();
         }
         return value.toString();
     }

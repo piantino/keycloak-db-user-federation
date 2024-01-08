@@ -11,7 +11,6 @@ import java.util.stream.Stream;
 
 import javax.ws.rs.core.Response;
 
-import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -77,14 +76,14 @@ public class DbUserProviterTest {
                         .withPassword("sa")
                         .withNetwork(network)
                         .withNetworkAliases("postgres")
-                        .withInitScript("init-script.sql");
+                        .withInitScript("init-script.sql")
+                        .withEnv("TZ", "America/Sao_Paulo");
 
         private Keycloak client;
         private RealmResource realm;
 
         @BeforeAll
         public void init() throws JsonParseException, JsonMappingException, IOException {
-
                 Stream.of(keycloak, postgres).parallel().forEach(GenericContainer::start);
 
                 client = KeycloakBuilder.builder()
@@ -164,6 +163,7 @@ public class DbUserProviterTest {
 
                 assertEquals(1, result.getAdded(), "Added");
                 assertEquals(2, result.getUpdated(), "Updated");
+                assertEquals(0, result.getFailed(), "Failed");
         }
 
         @Test
@@ -209,7 +209,7 @@ public class DbUserProviterTest {
                 String apiPath = keycloak.getAuthServerUrl() + "realms/db-user-realm/db-user/";
                 DbUserResource resource = client.proxy(DbUserResource.class, new URI(apiPath));
                 resource.sync("master", null);
-                
+
                 UserRepresentation user = realm.users().search("master").get(0);
 
                 assertEquals(false, user.isEnabled(), "Enabled");

@@ -18,6 +18,7 @@ import java.util.function.Consumer;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.component.ComponentValidationException;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.KeycloakSessionTask;
@@ -66,6 +67,13 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     }
 
     @Override
+    public void validateConfiguration(KeycloakSession session, RealmModel realm, ComponentModel config)
+            throws ComponentValidationException {
+
+        // Add validations
+    }
+
+    @Override
     public SynchronizationResult sync(KeycloakSessionFactory sessionFactory, String realmId,
             UserStorageProviderModel model) {
 
@@ -80,10 +88,10 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     public SynchronizationResult syncSince(Date lastSync, KeycloakSessionFactory sessionFactory, String realmId,
             UserStorageProviderModel model) {
 
-        LOGGER.debugv("Search users updated since {0}", lastSync);
+        Timestamp timeStamp = new Timestamp(lastSync.getTime());
+        LOGGER.debugv("Search users updated since {0}", timeStamp);
 
         String sql = model.get(DataSouceConfiguration.SYNC_SINCE_SQL);
-        Timestamp timeStamp = new Timestamp(lastSync.getTime());
 
         SynchronizationResult result = importUsers(sessionFactory, realmId, model, sql, (ps) -> {
             try {
@@ -92,7 +100,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                 throw new DbUserProviderException("Error configure sync since " + timeStamp, e);
             }
         });
-        LOGGER.infov("Sync since {0}: {1}", lastSync, result);
+        LOGGER.infov("Sync since {0}: {1}", timeStamp, result);
         return result;
     }
 
