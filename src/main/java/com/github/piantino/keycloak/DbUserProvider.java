@@ -64,12 +64,12 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
             user = session.userLocalStorage().addUser(realm, username);
             user.setFederationLink(model.getId());
             importation = Importation.ADDED;
-            LOGGER.debugv("Created user {0}", username);
+            LOGGER.debugv("{0} - Created user {1}", realm.getId(), username);
 
             addRequiredActions(user, actions);
             createCredential(realm, user, data);
         } else if (!model.getId().equals(user.getFederationLink())) {
-            throw new DbUserProviderException("Local user not created from importation: " + username);
+            throw new DbUserProviderException(realm.getId() + " - Local user not created from importation: " + username);
         } else {
             importation = Importation.UPDATED;
         }
@@ -109,7 +109,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
 
             roleRoot.addCompositeRole(role);
 
-            LOGGER.debugv("Created role {0}", roleName);
+            LOGGER.debugv("{0} - Created role {1}", realm.getId(), roleName);
         }
         return role;
     }

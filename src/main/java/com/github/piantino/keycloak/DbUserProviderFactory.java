@@ -80,7 +80,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         String sql = model.get(DataSouceConfiguration.SYNC_SQL);
         SynchronizationResult result = importUsers(sessionFactory, realmId, model, sql, (ps) -> {
         });
-        LOGGER.infov("Sync all: {0}", result);
+        LOGGER.infov("{0} - Sync all: {1}", realmId, result);
         return result;
     }
 
@@ -89,7 +89,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
             UserStorageProviderModel model) {
 
         Timestamp timeStamp = new Timestamp(lastSync.getTime());
-        LOGGER.debugv("Search users updated since {0}", timeStamp);
+        LOGGER.debugv("{0} - Search users updated since {1}", realmId, timeStamp);
 
         String sql = model.get(DataSouceConfiguration.SYNC_SINCE_SQL);
 
@@ -97,10 +97,10 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
             try {
                 ps.setTimestamp(1, timeStamp);
             } catch (SQLException e) {
-                throw new DbUserProviderException("Error configure sync since " + timeStamp, e);
+                throw new DbUserProviderException("Error configure sync since " + timeStamp + " in " + realmId, e);
             }
         });
-        LOGGER.infov("Sync since {0}: {1}", timeStamp, result);
+        LOGGER.infov("{0} - Sync since {1}: {2}", realmId, timeStamp, result);
         return result;
     }
 
@@ -120,10 +120,10 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
             try {
                 ps.setString(1, username);
             } catch (SQLException e) {
-                throw new DbUserProviderException("Error configure sync user " + username, e);
+                throw new DbUserProviderException("Error configure sync user " + username + " in " + realmId, e);
             }
         });
-        LOGGER.infov("Sync username {0}: {1}", username, result);
+        LOGGER.infov("{0} - Sync username {1}: {2}", realmId, username, result);
         return result;
     }
 
@@ -151,7 +151,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                     }
                     String username = (String) data.get(Column.username.toString());
 
-                    LOGGER.debugv("Syncing user {0}", username);
+                    LOGGER.debugv("{0} - Syncing user {1}", realmId, username);
 
                     // Process each user in it's own transaction to avoid global fail
                     KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
@@ -176,7 +176,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                                 }
                             } catch (Throwable e) {
                                 result.increaseFailed();
-                                LOGGER.errorv(e, "Error on import {0}",
+                                LOGGER.errorv(e, "{0} - Error on import {1}",
                                         data.get(DbUserProvider.Column.username.name()));
                             }
                         }
@@ -184,7 +184,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                 }
             }
         } catch (SQLException e) {
-            throw new DbUserProviderException("Error on connect to database", e);
+            throw new DbUserProviderException("Error on connect to database in " + realmId, e);
         }
         return result;
     }
