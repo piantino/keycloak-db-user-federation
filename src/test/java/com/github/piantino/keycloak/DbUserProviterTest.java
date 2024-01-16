@@ -150,6 +150,12 @@ public class DbUserProviterTest {
                 Set<UserRepresentation> roleUserMembers = role.getRoleUserMembers();
                 assertEquals(1, roleUserMembers.size(), "There can be only one");
                 assertEquals("hank", roleUserMembers.stream().map(u -> u.getUsername()).findFirst().get(), "Role");
+
+                role = realm.roles().get("default-roles-db-user-realm");
+                assertNotNull(role, "Default role");
+
+                roleUserMembers = role.getRoleUserMembers();
+                assertEquals(realm.users().count(), roleUserMembers.size(), "All users");
         }
 
         @Test

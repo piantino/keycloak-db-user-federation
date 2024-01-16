@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.PasswordCredentialProviderFactory;
+import org.keycloak.models.Constants;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
@@ -95,6 +96,8 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         List<RoleModel> actualRoles = user.getRealmRoleMappingsStream().collect(Collectors.toList());
         List<RoleModel> newRoles = roles.stream().map(roleName -> getRole(realm, roleRoot, roleName))
                 .collect(Collectors.toList());
+
+        newRoles.add(getDefaultRole(realm));
 
         newRoles.stream().filter(r -> !actualRoles.contains(r)).forEach(user::grantRole);
         actualRoles.stream().filter(r -> !newRoles.contains(r)).forEach(user::deleteRoleMapping);
@@ -217,6 +220,11 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
 
     private boolean hasColumn(Map<String, Object> data, Column column) {
         return data.get(column.name()) != null;
+    }
+
+    private RoleModel getDefaultRole(RealmModel realm) {
+        String roleName = Constants.DEFAULT_ROLES_ROLE_PREFIX + "-" + realm.getId();
+        return KeycloakModelUtils.getRoleFromString(realm, roleName);
     }
 
 }
