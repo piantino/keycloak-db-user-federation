@@ -70,7 +70,8 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
             addRequiredActions(user, actions);
             createCredential(realm, user, data);
         } else if (!model.getId().equals(user.getFederationLink())) {
-            throw new DbUserProviderException(realm.getId() + " - Local user not created from importation: " + username);
+            throw new DbUserProviderException(
+                    realm.getId() + " - Local user not created from importation: " + username);
         } else {
             importation = Importation.UPDATED;
         }
@@ -97,10 +98,11 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         List<RoleModel> newRoles = roles.stream().map(roleName -> getRole(realm, roleRoot, roleName))
                 .collect(Collectors.toList());
 
-        newRoles.add(getDefaultRole(realm));
-
-        newRoles.stream().filter(r -> !actualRoles.contains(r)).forEach(user::grantRole);
         actualRoles.stream().filter(r -> !newRoles.contains(r)).forEach(user::deleteRoleMapping);
+
+        newRoles.add(getDefaultRole(realm));
+        newRoles.stream().filter(r -> !user.hasRole(r))
+                .forEach(user::grantRole);
     }
 
     private RoleModel getRole(RealmModel realm, RoleModel roleRoot, String roleName) {

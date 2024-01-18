@@ -9,3 +9,14 @@ INSERT INTO users (username, email, email_verified, first_name, last_name, enabl
 DELETE FROM roles WHERE username = 'hank';
 INSERT INTO roles (username, name) VALUES ('hank', 'ex-leader');
 UPDATE users SET updated = now() WHERE username = 'hank';
+
+DELETE FROM roles WHERE username = 'master' AND name = 'role2';
+
+insert into roles (username, name)
+    VALUES ('master', 'role4');
+insert into roles (username, name)
+    VALUES ('master', 'role5');
+insert into roles (username, name)
+    VALUES ('master', 'role6');
+
+UPDATE users SET updated = now() WHERE username = 'master';

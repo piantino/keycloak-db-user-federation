@@ -5,8 +5,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.ws.rs.core.Response;
@@ -142,7 +144,7 @@ public class DbUserProviterTest {
         @Order(3)
         public void valitateRoleImportation() {
                 RoleResource rootRole = realm.roles().get("db-user-provider-roles");
-                assertEquals(1, rootRole.getRealmRoleComposites().size(), "Root role");
+                assertEquals(4, rootRole.getRealmRoleComposites().size(), "Root role");
 
                 RoleResource role = realm.roles().get("leader");
                 assertNotNull(role, "Leader role");
@@ -156,6 +158,13 @@ public class DbUserProviterTest {
 
                 roleUserMembers = role.getRoleUserMembers();
                 assertEquals(realm.users().count(), roleUserMembers.size(), "All users");
+
+                UserRepresentation user = realm.users().search("master").get(0);
+                List<String> roles = realm.users().get(user.getId()).roles().realmLevel().listAll()
+                                .stream().map(r -> r.getName()).sorted().collect(Collectors.toList());
+                List<String> expected = Arrays.asList(
+                                "default-roles-db-user-realm", "role1", "role2", "role3");
+                assertIterableEquals(expected, roles, "Master roles");
         }
 
         @Test
@@ -168,7 +177,7 @@ public class DbUserProviterTest {
                                 "triggerChangedUsersSync");
 
                 assertEquals(1, result.getAdded(), "Added");
-                assertEquals(2, result.getUpdated(), "Updated");
+                assertEquals(3, result.getUpdated(), "Updated");
                 assertEquals(0, result.getFailed(), "Failed");
         }
 
@@ -176,7 +185,7 @@ public class DbUserProviterTest {
         @Order(5)
         public void valitateRoleChanged() {
                 RoleResource rootRole = realm.roles().get("db-user-provider-roles");
-                assertEquals(2, rootRole.getRealmRoleComposites().size(), "Root role");
+                assertEquals(8, rootRole.getRealmRoleComposites().size(), "Root role");
 
                 RoleResource role = realm.roles().get("leader");
                 assertNotNull(role, "Leader role");
@@ -190,6 +199,13 @@ public class DbUserProviterTest {
                 roleUserMembers = role.getRoleUserMembers();
                 assertEquals(1, roleUserMembers.size(), "Role member");
                 assertEquals("hank", roleUserMembers.stream().map(u -> u.getUsername()).findFirst().get(), "Role");
+
+                UserRepresentation user = realm.users().search("master").get(0);
+                List<String> roles = realm.users().get(user.getId()).roles().realmLevel().listAll()
+                                .stream().map(r -> r.getName()).sorted().collect(Collectors.toList());
+                List<String> expected = Arrays.asList(
+                                "default-roles-db-user-realm", "role1", "role3", "role4", "role5", "role6");
+                assertIterableEquals(expected, roles, "Master roles");
         }
 
         @Test
@@ -217,8 +233,8 @@ public class DbUserProviterTest {
                 resource.sync("master", null);
 
                 UserRepresentation user = realm.users().search("master").get(0);
-
-                assertEquals(false, user.isEnabled(), "Enabled");
+                assertEquals("Missing", user.getFirstName(), "First name");
+                assertEquals(false, user.isEnabled(), "Disabled");
         }
 
         @Test

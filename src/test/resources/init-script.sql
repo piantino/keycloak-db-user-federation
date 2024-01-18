@@ -66,3 +66,10 @@ CREATE TABLE roles (
 
 INSERT INTO roles (username, name) 
     VALUES ('hank', 'leader');
+
+insert into roles (username, name)
+    VALUES ('master', 'role1');
+insert into roles (username, name)
+    VALUES ('master', 'role2');
+insert into roles (username, name)
+    VALUES ('master', 'role3');

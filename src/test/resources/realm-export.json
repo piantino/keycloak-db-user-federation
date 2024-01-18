@@ -764,7 +764,7 @@
             "604800"
           ],
           "cachePolicy": [
-            "DEFAULT"
+            "NO_CACHE"
           ],
           "changedSyncPeriod": [
             "86400"
