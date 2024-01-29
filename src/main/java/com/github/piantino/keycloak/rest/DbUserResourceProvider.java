@@ -30,9 +30,12 @@ public class DbUserResourceProvider extends AdminRoot implements RealmResourcePr
 
 	private static final Pattern REALM_PATTERN = Pattern.compile("^/realms\\/([^\\/]+)\\/.+$");
 
+	private DbUserProviderFactory factory;
+
 	public DbUserResourceProvider(KeycloakSession session) {
 		super();
 		this.session = session;
+		this.factory = new DbUserProviderFactory();
 	}
 
 	@Override
@@ -50,11 +53,10 @@ public class DbUserResourceProvider extends AdminRoot implements RealmResourcePr
 		checkAuth(headers);
 
 		RealmModel realm = session.realms().getRealmByName(getRealmName());
-		DbUserProviderFactory factory = new DbUserProviderFactory();
-		UserStorageProviderModel model = getModel(realm, factory);
+		UserStorageProviderModel model = getModel(realm);
 		KeycloakSessionFactory sessionFactory = session.getKeycloakSessionFactory();
 
-		SynchronizationResult result = factory.syncUsername(username, sessionFactory, realm.getId(), model);
+		SynchronizationResult result = this.factory.syncUsername(username, sessionFactory, realm.getId(), model);
 		if (result.getAdded() == 0 && result.getUpdated() == 0) {
 			throw new NotFoundException("Username " + username+ " not found");
 		}
@@ -83,9 +85,9 @@ public class DbUserResourceProvider extends AdminRoot implements RealmResourcePr
 		return matcher.group(1);
 	}
 
-	private UserStorageProviderModel getModel(RealmModel realm, DbUserProviderFactory factory) {
+	private UserStorageProviderModel getModel(RealmModel realm) {
 		return realm.getUserStorageProvidersStream()
-				.filter(fedProvider -> Objects.equals(fedProvider.getProviderId(), factory.getId()))
+				.filter(fedProvider -> Objects.equals(fedProvider.getProviderId(), DbUserProviderFactory.PROVIDER_ID))
 				.findFirst()
 				.orElseThrow(() -> new DbUserProviderException("db-user-provided not configured"));
 	}

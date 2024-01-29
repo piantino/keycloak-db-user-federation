@@ -43,17 +43,19 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
 
     protected static final Logger LOGGER = Logger.getLogger(DbUserProviderFactory.class);
 
+    public static final String PROVIDER_ID = "db-user-provider";
+
     private static final List<ProviderConfigProperty> CONFIG_PROPERTIES;
     static {
         List<ProviderConfigProperty> config = DataSouceConfiguration.create();
         CONFIG_PROPERTIES = Collections.unmodifiableList(config);
     }
 
-    private final Map<String, AgroalDataSource> dataSourceByModelId = new ConcurrentHashMap<>();
+    private static final Map<String, AgroalDataSource> DB_BY_MODEL_ID = new ConcurrentHashMap<>();
 
     @Override
     public String getId() {
-        return "db-user-provider";
+        return PROVIDER_ID;
     }
 
     @Override
@@ -106,7 +108,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
 
     @Override
     public void close() {
-        for (Entry<String, AgroalDataSource> entry : dataSourceByModelId.entrySet()) {
+        for (Entry<String, AgroalDataSource> entry : DB_BY_MODEL_ID.entrySet()) {
             LOGGER.debugv("Close DataSource {0}", entry.getKey());
             entry.getValue().close();
         }
@@ -127,12 +129,19 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         return result;
     }
 
+    public static AgroalDataSource getDataSource(String realmId) {
+        if(!DB_BY_MODEL_ID.containsKey(realmId)) {
+            throw new DbUserProviderException(PROVIDER_ID + " not configured for realm id " + realmId);
+        }
+        return DB_BY_MODEL_ID.get(realmId);
+    }
+
     private SynchronizationResult importUsers(KeycloakSessionFactory sessionFactory, String realmId,
             UserStorageProviderModel model, String sql, Consumer<PreparedStatement> psConsumer) {
 
         SynchronizationResult result = new SynchronizationResult();
 
-        AgroalDataSource ds = getDataSource(model);
+        AgroalDataSource ds = DbUserProviderFactory.getDataSource(model);
 
         try (Connection con = ds.getConnection();
                 PreparedStatement ps = con.prepareStatement(sql);) {
@@ -161,7 +170,6 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                             RealmModel currentRealm = session.realms().getRealm(realmId);
                             session.getContext().setRealm(currentRealm);
 
-                            // TODO: Not work session.getProvider(DbUserProvider.class)
                             DbUserProvider provider = create(session, model);
 
                             try {
@@ -211,9 +219,9 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         return roles;
     }
 
-    private AgroalDataSource getDataSource(UserStorageProviderModel model) {
-        return dataSourceByModelId.computeIfAbsent(model.getId(), key -> {
-            LOGGER.debugv("Creating DataSource {0} ({1})", model.getId(), model.getParentId());
+    private static AgroalDataSource getDataSource(UserStorageProviderModel model) {
+        return DB_BY_MODEL_ID.computeIfAbsent(model.getParentId(), key -> {
+            LOGGER.debugv("Creating DataSource {0}", model.getParentId());
             return DataSourceProvider.create(model);
         });
     }
