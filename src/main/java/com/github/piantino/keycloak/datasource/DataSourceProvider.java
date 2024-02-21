@@ -25,6 +25,8 @@ public class DataSourceProvider {
         props.put(INITIAL_SIZE, model.get(INITIAL_SIZE));
         props.put(MAX_LIFETIME_S, model.get(MAX_LIFETIME_S));
         props.put(ACQUISITION_TIMEOUT_S, model.get(ACQUISITION_TIMEOUT_S));
+        props.put(METRICS_ENABLED, model.get(METRICS_ENABLED));
+
         try {
             return AgroalDataSource.from(new AgroalPropertiesReader().readProperties(props));
         } catch (SQLException e) {

@@ -38,6 +38,7 @@ import com.github.piantino.keycloak.datasource.DataSourceProvider;
 import com.github.piantino.keycloak.exception.DbUserProviderException;
 
 import io.agroal.api.AgroalDataSource;
+import io.agroal.api.AgroalDataSourceMetrics;
 
 public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserProvider>, ImportSynchronization {
 
@@ -225,5 +226,12 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
             return DataSourceProvider.create(model);
         });
     }
+
+    public static AgroalDataSourceMetrics getDataSourceMetrics(String realm) {
+		if (DB_BY_MODEL_ID.containsKey(realm)) {
+			return DB_BY_MODEL_ID.get(realm).getMetrics();
+		}
+		return null;
+	}
 
 }

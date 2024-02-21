@@ -291,4 +291,13 @@ public class DbUserProviterTest {
                 }
         }
 
+        @Test
+        @Order(10)
+        public void databaseMetrics() throws URISyntaxException {
+                String apiPath = keycloak.getAuthServerUrl() + "realms/db-user-realm/db-user/";
+                DbUserResource resource = client.proxy(DbUserResource.class, new URI(apiPath));
+                String metrics = resource.metrics(null);
+
+                assertNotEquals("Metrics Disabled", metrics);
+        }
 }

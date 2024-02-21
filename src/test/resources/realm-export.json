@@ -785,19 +785,22 @@
             "sa"
           ],
           "minSize": [
-            "1"
+            "0"
           ],
           "maxSize": [
-            "5"
-          ],
-          "initialSize": [
             "1"
           ],
+          "initialSize": [
+            "0"
+          ],
           "maxLifetime_s": [
-            "120"
+            "10"
           ],
           "acquisitionTimeout_s": [
-            "60"
+            "5"
+          ],
+          "metricsEnabled": [
+            "true"
           ],
           "syncSql": [
             "SELECT username, email, email_verified, first_name, last_name, enabled, temp_password, required_actions, updated, ability FROM users"

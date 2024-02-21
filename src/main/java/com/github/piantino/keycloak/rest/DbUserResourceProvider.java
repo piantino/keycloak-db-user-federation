@@ -25,6 +25,8 @@ import org.keycloak.storage.user.SynchronizationResult;
 import com.github.piantino.keycloak.DbUserProviderFactory;
 import com.github.piantino.keycloak.exception.DbUserProviderException;
 
+import io.agroal.api.AgroalDataSourceMetrics;
+
 // TODO: Use AdminResourceProvider in keycloak 19 instead AdminRoot
 public class DbUserResourceProvider extends AdminRoot implements RealmResourceProvider, DbUserResource {
 
@@ -60,6 +62,14 @@ public class DbUserResourceProvider extends AdminRoot implements RealmResourcePr
 		if (result.getAdded() == 0 && result.getUpdated() == 0) {
 			throw new NotFoundException("Username " + username+ " not found");
 		}
+	}
+
+	@Override
+	public String metrics(HttpHeaders headers) {
+		checkAuth(headers);
+
+		AgroalDataSourceMetrics metrics = DbUserProviderFactory.getDataSourceMetrics(getRealmName());
+		return metrics.toString();
 	}
 
 	private void checkAuth(HttpHeaders headers) {

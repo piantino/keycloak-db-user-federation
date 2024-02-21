@@ -24,7 +24,7 @@ SELECT username, email, email_verified, first_name, last_name, enabled, updated,
 
 Synchronize a user by username
 ```
-SELECT username, email, email_verified, first_name, last_name, enabled, updated, custom_attry FROM users WHERE username = ?
+SELECT username, email, email_verified, first_name, last_name, enabled, updated, custom_attr FROM users WHERE username = ?
 ```
 
 Synchronize Realm Roles
@@ -45,11 +45,11 @@ SELECT name FROM roles WHERE username = ?
 | temp_password    |          | String             | Only on creation. Recommended use with UPDATE_PASSWORD |
 | required_actions |          | String             | Only on creation. Separated by comma |
 | updated          | Yes      | Timestamp          | When this user was update in DB      |
-| <Custom>         |          | Any                | With be a string attribute           |
+| <custom_attr>    |          | Any                | With be a string attribute           |
 
 Attention, no empty or blank string is allowed, use NULL instead.
 
-## Required Actions
+### Required Actions
 
 * CONFIGURE_RECOVERY_AUTHN_CODES
 * CONFIGURE_TOTP
@@ -58,6 +58,29 @@ Attention, no empty or blank string is allowed, use NULL instead.
 * UPDATE_PROFILE
 * VERIFY_EMAIL
 * VERIFY_PROFILE
+
+### REST API
+
+#### Synchronize a user by username:
+
+http://localhost:8080/realms/(realm)/db-user/(username)/sync
+
+Return empty.
+
+#### Database metrics:
+
+http://localhost:8080/realms/(realm)/db-user/metrics
+
+Return a text like:
+```
+===
+Connections: 1 created | 0 invalid | 0 reap | 0 flush | 0 destroyed
+Pool: 1 available | 0 active | 1 max | 3 acquired | 3 returned
+Created duration: 069.830ms average | 69ms max | 69ms total
+Acquire duration: 023.486ms average | 70ms max | 70ms total
+Threads awaiting: 0
+===
+```
 
 ## Development
 
