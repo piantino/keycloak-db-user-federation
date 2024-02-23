@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
@@ -130,12 +131,22 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         return result;
     }
 
-    public static AgroalDataSource getDataSource(String realmId) {
-        if(!DB_BY_MODEL_ID.containsKey(realmId)) {
-            throw new DbUserProviderException(PROVIDER_ID + " not configured for realm id " + realmId);
-        }
-        return DB_BY_MODEL_ID.get(realmId);
+    public static AgroalDataSource getDataSource(RealmModel realm) {
+        UserStorageProviderModel model = getModel(realm);
+        return getDataSource(model);
     }
+
+    public static AgroalDataSourceMetrics getDataSourceMetrics(RealmModel realm) {
+        UserStorageProviderModel model = getModel(realm);
+        return getDataSource(model).getMetrics();
+	}
+
+    public static UserStorageProviderModel getModel(RealmModel realm) {
+		return realm.getUserStorageProvidersStream()
+				.filter(fedProvider -> Objects.equals(fedProvider.getProviderId(), DbUserProviderFactory.PROVIDER_ID))
+				.findFirst()
+				.orElseThrow(() -> new DbUserProviderException(DbUserProviderFactory.PROVIDER_ID + " not configured"));
+	}
 
     private SynchronizationResult importUsers(KeycloakSessionFactory sessionFactory, String realmId,
             UserStorageProviderModel model, String sql, Consumer<PreparedStatement> psConsumer) {
@@ -226,12 +237,5 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
             return DataSourceProvider.create(model);
         });
     }
-
-    public static AgroalDataSourceMetrics getDataSourceMetrics(String realm) {
-		if (DB_BY_MODEL_ID.containsKey(realm)) {
-			return DB_BY_MODEL_ID.get(realm).getMetrics();
-		}
-		return null;
-	}
 
 }

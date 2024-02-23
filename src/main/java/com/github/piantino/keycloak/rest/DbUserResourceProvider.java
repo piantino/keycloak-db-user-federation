@@ -1,7 +1,6 @@
 package com.github.piantino.keycloak.rest;
 
 import java.net.URI;
-import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -55,7 +54,7 @@ public class DbUserResourceProvider extends AdminRoot implements RealmResourcePr
 		checkAuth(headers);
 
 		RealmModel realm = session.realms().getRealmByName(getRealmName());
-		UserStorageProviderModel model = getModel(realm);
+		UserStorageProviderModel model = DbUserProviderFactory.getModel(realm);
 		KeycloakSessionFactory sessionFactory = session.getKeycloakSessionFactory();
 
 		SynchronizationResult result = this.factory.syncUsername(username, sessionFactory, realm.getId(), model);
@@ -68,7 +67,8 @@ public class DbUserResourceProvider extends AdminRoot implements RealmResourcePr
 	public String metrics(HttpHeaders headers) {
 		checkAuth(headers);
 
-		AgroalDataSourceMetrics metrics = DbUserProviderFactory.getDataSourceMetrics(getRealmName());
+		RealmModel realm = session.realms().getRealmByName(getRealmName());
+		AgroalDataSourceMetrics metrics = DbUserProviderFactory.getDataSourceMetrics(realm);
 		return metrics.toString();
 	}
 
@@ -94,12 +94,4 @@ public class DbUserResourceProvider extends AdminRoot implements RealmResourcePr
 		}
 		return matcher.group(1);
 	}
-
-	private UserStorageProviderModel getModel(RealmModel realm) {
-		return realm.getUserStorageProvidersStream()
-				.filter(fedProvider -> Objects.equals(fedProvider.getProviderId(), DbUserProviderFactory.PROVIDER_ID))
-				.findFirst()
-				.orElseThrow(() -> new DbUserProviderException("db-user-provided not configured"));
-	}
-
 }
