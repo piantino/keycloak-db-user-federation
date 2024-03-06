@@ -81,6 +81,8 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     public SynchronizationResult sync(KeycloakSessionFactory sessionFactory, String realmId,
             UserStorageProviderModel model) {
 
+        LOGGER.infov("{0} - Sync all started", realmId);
+
         String sql = model.get(DataSouceConfiguration.SYNC_SQL);
         SynchronizationResult result = importUsers(sessionFactory, realmId, model, sql, (ps) -> {
         });
