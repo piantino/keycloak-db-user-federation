@@ -7,7 +7,7 @@ A Keycloak extension for user providers from a database with synchronization in 
 | keycloak-db-user-federation | keycloak |
 |-----------------------------|----------|
 | 1.0.x                       | 18.0.2   |
-| 1.1.x                       | 23.0.7   |
+| 1.1.x                       | 24.0.x   |
 
 Attention, jump to 23.0.7 because this security problem:
 https://github.com/keycloak/keycloak/security/advisories/GHSA-mpwq-j3xf-7m5w
@@ -87,6 +87,29 @@ Threads awaiting: 0
 ```
 
 ## Development
+
+### Automated test
+
+Use the `com.github.piantino.keycloak.DbUserProviterTest` to fast development.
+
+Requirements:
+
+* Java 17
+* Docker
+
+### Run project for manual test
+
+Build the project:
+
+`mvn clean package`
+
+Start the container:
+
+`VERSION=<project version> docker compose up`
+
+Access the imported realm
+
+http://localhost:8080/admin/master/console/#/db-user-realm/user-federation/db-user-provider/d3766429-5ef2-4e7e-972a-2ee2872e6929
 
 ### Test CI locally
 

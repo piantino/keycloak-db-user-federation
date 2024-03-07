@@ -8,10 +8,10 @@ services:
       KEYCLOAK_LOGLEVEL: INFO
       ROOT_LOGLEVEL: INFO
     volumes:
-      - ./target/keycloak-db-user-federation-1.0.8.jar:/opt/keycloak/providers/keycloak-db-user-federation-1.0.8.jar
-    # - ./src/test/resources/realm-export.json:/opt/keycloak/data/import/realm-export.json
+      - ./target/keycloak-db-user-federation-${VERSION}.jar:/opt/keycloak/providers/keycloak-db-user-federation-${VERSION}.jar
+      - ./src/test/resources/realm-export.json:/opt/keycloak/data/import/realm-export.json
     ports:
       - "8080:8080"
-      - "8787:8787"
     command:
       - start-dev
+      - --import-realm
