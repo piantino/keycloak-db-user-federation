@@ -24,6 +24,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.KeycloakSessionTask;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.StorageProviderRealmModel;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.storage.UserStorageProviderFactory;
@@ -144,7 +145,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
 	}
 
     public static UserStorageProviderModel getModel(RealmModel realm) {
-		return realm.getUserStorageProvidersStream()
+		return ((StorageProviderRealmModel) realm).getUserStorageProvidersStream()
 				.filter(fedProvider -> Objects.equals(fedProvider.getProviderId(), DbUserProviderFactory.PROVIDER_ID))
 				.findFirst()
 				.orElseThrow(() -> new DbUserProviderException(DbUserProviderFactory.PROVIDER_ID + " not configured"));
@@ -236,7 +237,12 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     private static AgroalDataSource getDataSource(UserStorageProviderModel model) {
         return DB_BY_MODEL_ID.computeIfAbsent(model.getParentId(), key -> {
             LOGGER.debugv("Creating DataSource {0}", model.getParentId());
-            return DataSourceProvider.create(model);
+            try {
+                return DataSourceProvider.create(model);
+            } catch (SQLException e) {
+                LOGGER.error("Fail to create Datasource in " + model.getParentId(), e);
+                throw new DbUserProviderException("Fail to create Datasource in " + model.getParentId(), e);
+            }
         });
     }
 

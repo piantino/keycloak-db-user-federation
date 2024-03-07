@@ -1,0 +1,27 @@
+# https://marketplace.visualstudio.com/items?itemName=humao.rest-client
+
+@host=http://localhost:32797
+@realm=db-user-realm
+@username=master
+
+###
+# @name login
+POST {{host}}/realms/master/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=admin-cli
+&grant_type=password
+&username=admin
+&password=admin123
+
+###
+
+POST {{host}}/admin/realms/{{realm}}/db-user/{{username}}/sync
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.access_token}}
+
+###
+
+GET {{host}}/admin/realms/{{realm}}/db-user/metrics
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.access_token}}

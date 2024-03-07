@@ -37,6 +37,7 @@
   "editUsernameAllowed": false,
   "bruteForceProtected": false,
   "permanentLockout": false,
+  "maxTemporaryLockouts": 0,
   "maxFailureWaitSeconds": 900,
   "minimumQuickLoginWaitSeconds": 60,
   "waitIncrementSeconds": 60,
@@ -60,10 +61,13 @@
   "otpPolicyDigits": 6,
   "otpPolicyLookAheadWindow": 1,
   "otpPolicyPeriod": 30,
+  "otpPolicyCodeReusable": false,
   "otpSupportedApplications": [
-    "FreeOTP",
-    "Google Authenticator"
+    "totpAppFreeOTPName",
+    "totpAppGoogleName",
+    "totpAppMicrosoftAuthenticatorName"
   ],
+  "localizationTexts": {},
   "webAuthnPolicyRpEntityName": "keycloak",
   "webAuthnPolicySignatureAlgorithms": [
     "ES256"
@@ -76,6 +80,7 @@
   "webAuthnPolicyCreateTimeout": 0,
   "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyAcceptableAaguids": [],
+  "webAuthnPolicyExtraOrigins": [],
   "webAuthnPolicyPasswordlessRpEntityName": "keycloak",
   "webAuthnPolicyPasswordlessSignatureAlgorithms": [
     "ES256"
@@ -88,6 +93,7 @@
   "webAuthnPolicyPasswordlessCreateTimeout": 0,
   "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyPasswordlessAcceptableAaguids": [],
+  "webAuthnPolicyPasswordlessExtraOrigins": [],
   "scopeMappings": [
     {
       "clientScope": "offline_access",
@@ -623,6 +629,7 @@
   "browserSecurityHeaders": {
     "contentSecurityPolicyReportOnly": "",
     "xContentTypeOptions": "nosniff",
+    "referrerPolicy": "no-referrer",
     "xRobotsTag": "none",
     "xFrameOptions": "SAMEORIGIN",
     "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
@@ -676,14 +683,14 @@
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "oidc-sha256-pairwise-sub-mapper",
-            "oidc-usermodel-property-mapper",
-            "oidc-full-name-mapper",
-            "saml-user-attribute-mapper",
-            "oidc-address-mapper",
+            "saml-user-property-mapper",
             "saml-role-list-mapper",
             "oidc-usermodel-attribute-mapper",
-            "saml-user-property-mapper"
+            "oidc-sha256-pairwise-sub-mapper",
+            "saml-user-attribute-mapper",
+            "oidc-full-name-mapper",
+            "oidc-usermodel-property-mapper",
+            "oidc-address-mapper"
           ]
         }
       },
@@ -735,13 +742,13 @@
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "oidc-sha256-pairwise-sub-mapper",
             "oidc-usermodel-property-mapper",
+            "oidc-sha256-pairwise-sub-mapper",
             "saml-user-attribute-mapper",
-            "oidc-full-name-mapper",
-            "saml-user-property-mapper",
-            "oidc-address-mapper",
             "oidc-usermodel-attribute-mapper",
+            "saml-user-property-mapper",
+            "oidc-full-name-mapper",
+            "oidc-address-mapper",
             "saml-role-list-mapper"
           ]
         }
@@ -754,41 +761,17 @@
         "providerId": "db-user-provider",
         "subComponents": {},
         "config": {
-          "priority": [
-            "0"
+          "providerClassName": [
+            "org.postgresql.Driver"
           ],
-          "enabled": [
+          "metricsEnabled": [
             "true"
           ],
           "fullSyncPeriod": [
             "604800"
           ],
-          "cachePolicy": [
-            "NO_CACHE"
-          ],
-          "changedSyncPeriod": [
-            "86400"
-          ],
-          "lastSync": [
-            "1684961849"
-          ],
-          "providerClassName": [
-            "org.postgresql.Driver"
-          ],
-          "jdbcUrl": [
-            "jdbc:postgresql://postgres:5432/test-db?loggerLevel=OFF&options=-c%20timezone%3DAmerica/Sao_Paulo"
-          ],
-          "principal": [
-            "sa"
-          ],
-          "credential": [
-            "sa"
-          ],
-          "minSize": [
-            "0"
-          ],
-          "maxSize": [
-            "1"
+          "syncRoleSql": [
+            "SELECT name FROM db_user_roles WHERE username = ?"
           ],
           "initialSize": [
             "0"
@@ -796,28 +779,78 @@
           "maxLifetime_s": [
             "10"
           ],
+          "maxSize": [
+            "1"
+          ],
+          "cachePolicy": [
+            "NO_CACHE"
+          ],
+          "priority": [
+            "0"
+          ],
+          "enabled": [
+            "true"
+          ],
+          "syncOneSql": [
+            "SELECT username, email, email_verified, first_name, last_name, enabled, required_actions, updated, ability FROM db_user_users WHERE username = ?"
+          ],
+          "principal": [
+            "sa"
+          ],
+          "syncSql": [
+            "SELECT username, email, email_verified, first_name, last_name, enabled, temp_password, required_actions, updated, ability FROM db_user_users"
+          ],
+          "changedSyncPeriod": [
+            "86400"
+          ],
+          "lastSync": [
+            "1684961849"
+          ],
+          "credential": [
+            "sa"
+          ],
+          "jdbcUrl": [
+            "jdbc:postgresql://postgres:5432/test-db?loggerLevel=OFF&options=-c%20timezone%3DAmerica/Sao_Paulo"
+          ],
           "acquisitionTimeout_s": [
             "5"
           ],
-          "metricsEnabled": [
-            "true"
-          ],
-          "syncSql": [
-            "SELECT username, email, email_verified, first_name, last_name, enabled, temp_password, required_actions, updated, ability FROM users"
+          "minSize": [
+            "0"
           ],
           "syncSinceSql": [
-            "SELECT username, email, email_verified, first_name, last_name, enabled, required_actions, updated, ability FROM users WHERE updated > ?"
-          ],
-          "syncOneSql": [
-            "SELECT username, email, email_verified, first_name, last_name, enabled, required_actions, updated, ability FROM users WHERE username = ?"
-          ],
-          "syncRoleSql": [
-            "SELECT name FROM roles WHERE username = ?"
+            "SELECT username, email, email_verified, first_name, last_name, enabled, required_actions, updated, ability FROM db_user_users WHERE updated > ?"
+          ]
+        }
+      }
+    ],
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "id": "3635aa2d-a3d1-4b60-abd8-e0c43b037b21",
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}],\"unmanagedAttributePolicy\":\"ENABLED\"}"
           ]
         }
       }
     ],
     "org.keycloak.keys.KeyProvider": [
+      {
+        "id": "1ea919a4-0ef4-4702-a369-6cb82b5e0127",
+        "name": "hmac-generated-hs512",
+        "providerId": "hmac-generated",
+        "subComponents": {},
+        "config": {
+          "priority": [
+            "100"
+          ],
+          "algorithm": [
+            "HS512"
+          ]
+        }
+      },
       {
         "id": "9f4ac20e-ed1d-4e76-927e-1f8f60d99679",
         "name": "rsa-generated",
@@ -895,40 +928,6 @@
           "priority": 20,
           "autheticatorFlow": true,
           "flowAlias": "Verify Existing Account by Re-authentication",
-          "userSetupAllowed": false
-        }
-      ]
-    },
-    {
-      "id": "d054fdba-ffb6-4da8-bddc-ae796437b4cb",
-      "alias": "Authentication Options",
-      "description": "Authentication options.",
-      "providerId": "basic-flow",
-      "topLevel": false,
-      "builtIn": true,
-      "authenticationExecutions": [
-        {
-          "authenticator": "basic-auth",
-          "authenticatorFlow": false,
-          "requirement": "REQUIRED",
-          "priority": 10,
-          "autheticatorFlow": false,
-          "userSetupAllowed": false
-        },
-        {
-          "authenticator": "basic-auth-otp",
-          "authenticatorFlow": false,
-          "requirement": "DISABLED",
-          "priority": 20,
-          "autheticatorFlow": false,
-          "userSetupAllowed": false
-        },
-        {
-          "authenticator": "auth-spnego",
-          "authenticatorFlow": false,
-          "requirement": "DISABLED",
-          "priority": 30,
-          "autheticatorFlow": false,
           "userSetupAllowed": false
         }
       ]
@@ -1306,32 +1305,6 @@
       ]
     },
     {
-      "id": "7829ff23-5860-4245-9e36-fcdf96644af0",
-      "alias": "http challenge",
-      "description": "An authentication flow based on challenge-response HTTP Authentication Schemes",
-      "providerId": "basic-flow",
-      "topLevel": true,
-      "builtIn": true,
-      "authenticationExecutions": [
-        {
-          "authenticator": "no-cookie-redirect",
-          "authenticatorFlow": false,
-          "requirement": "REQUIRED",
-          "priority": 10,
-          "autheticatorFlow": false,
-          "userSetupAllowed": false
-        },
-        {
-          "authenticatorFlow": true,
-          "requirement": "REQUIRED",
-          "priority": 20,
-          "autheticatorFlow": true,
-          "flowAlias": "Authentication Options",
-          "userSetupAllowed": false
-        }
-      ]
-    },
-    {
       "id": "5a2e147c-800e-4a0e-a904-53c06c4a87f1",
       "alias": "registration",
       "description": "registration flow",
@@ -1363,14 +1336,6 @@
           "authenticatorFlow": false,
           "requirement": "REQUIRED",
           "priority": 20,
-          "autheticatorFlow": false,
-          "userSetupAllowed": false
-        },
-        {
-          "authenticator": "registration-profile-action",
-          "authenticatorFlow": false,
-          "requirement": "REQUIRED",
-          "priority": 40,
           "autheticatorFlow": false,
           "userSetupAllowed": false
         },
@@ -1480,9 +1445,9 @@
       "config": {}
     },
     {
-      "alias": "terms_and_conditions",
+      "alias": "TERMS_AND_CONDITIONS",
       "name": "Terms and Conditions",
-      "providerId": "terms_and_conditions",
+      "providerId": "TERMS_AND_CONDITIONS",
       "enabled": false,
       "defaultAction": false,
       "priority": 20,
@@ -1540,6 +1505,7 @@
   "resetCredentialsFlow": "reset credentials",
   "clientAuthenticationFlow": "clients",
   "dockerAuthenticationFlow": "docker auth",
+  "firstBrokerLoginFlow": "first broker login",
   "attributes": {
     "cibaBackchannelTokenDeliveryMode": "poll",
     "cibaExpiresIn": "120",
@@ -1551,9 +1517,10 @@
     "parRequestUriLifespan": "60",
     "clientSessionMaxLifespan": "0",
     "clientOfflineSessionIdleTimeout": "0",
-    "cibaInterval": "5"
+    "cibaInterval": "5",
+    "realmReusableOtpCode": "false"
   },
-  "keycloakVersion": "18.0.2",
+  "keycloakVersion": "24.0.1",
   "userManagedAccessAllowed": false,
   "clientProfiles": {
     "profiles": []

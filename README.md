@@ -6,7 +6,11 @@ A Keycloak extension for user providers from a database with synchronization in 
 
 | keycloak-db-user-federation | keycloak |
 |-----------------------------|----------|
-| 1.x.x                       | 18.0.2   |
+| 1.0.x                       | 18.0.2   |
+| 1.1.x                       | 23.0.7   |
+
+Attention, jump to 23.0.7 because this security problem:
+https://github.com/keycloak/keycloak/security/advisories/GHSA-mpwq-j3xf-7m5w
 
 ## Tutorial
 
