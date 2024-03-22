@@ -141,14 +141,14 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     public static AgroalDataSourceMetrics getDataSourceMetrics(RealmModel realm) {
         UserStorageProviderModel model = getModel(realm);
         return getDataSource(model).getMetrics();
-	}
+    }
 
     public static UserStorageProviderModel getModel(RealmModel realm) {
-		return realm.getUserStorageProvidersStream()
-				.filter(fedProvider -> Objects.equals(fedProvider.getProviderId(), DbUserProviderFactory.PROVIDER_ID))
-				.findFirst()
-				.orElseThrow(() -> new DbUserProviderException(DbUserProviderFactory.PROVIDER_ID + " not configured"));
-	}
+        return realm.getUserStorageProvidersStream()
+                .filter(fedProvider -> Objects.equals(fedProvider.getProviderId(), DbUserProviderFactory.PROVIDER_ID))
+                .findFirst()
+                .orElseThrow(() -> new DbUserProviderException(DbUserProviderFactory.PROVIDER_ID + " not configured"));
+    }
 
     private SynchronizationResult importUsers(KeycloakSessionFactory sessionFactory, String realmId,
             UserStorageProviderModel model, String sql, Consumer<PreparedStatement> psConsumer) {
@@ -198,7 +198,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                                 }
                             } catch (Throwable e) {
                                 result.increaseFailed();
-                                LOGGER.errorv(e, "{0} - Error on import {1}",
+                                LOGGER.errorv(e, "{0} - Error on import {1}", realmId,
                                         data.get(DbUserProvider.Column.username.name()));
                             }
                         }
