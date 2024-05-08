@@ -12,7 +12,7 @@ import static io.agroal.api.configuration.supplier.AgroalPropertiesReader.*;
 
 public class DataSourceProvider {
 
-    public static AgroalDataSource create(ComponentModel model) {
+    public static AgroalDataSource create(ComponentModel model) throws SQLException {
         Map<String, String> props = new HashMap<>();
 
         props.put(PROVIDER_CLASS_NAME, model.get(PROVIDER_CLASS_NAME));
@@ -27,11 +27,7 @@ public class DataSourceProvider {
         props.put(ACQUISITION_TIMEOUT_S, model.get(ACQUISITION_TIMEOUT_S));
         props.put(METRICS_ENABLED, model.get(METRICS_ENABLED));
 
-        try {
-            return AgroalDataSource.from(new AgroalPropertiesReader().readProperties(props));
-        } catch (SQLException e) {
-            throw new RuntimeException("Fail to create Datasource in " + model.getParentId(), e);
-        }
+        return AgroalDataSource.from(new AgroalPropertiesReader().readProperties(props));       
     }
 
 }

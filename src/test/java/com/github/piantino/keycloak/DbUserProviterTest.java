@@ -7,11 +7,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -46,7 +45,7 @@ import org.testcontainers.utility.MountableFile;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
-import com.github.piantino.keycloak.rest.DbUserResource;
+import com.github.piantino.keycloak.rest.DbUserResourceApi;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
 
@@ -55,21 +54,25 @@ import dasniko.testcontainers.keycloak.KeycloakContainer;
 public class DbUserProviterTest {
 
         private static final String USER_PROVIDER_ID = "d3766429-5ef2-4e7e-972a-2ee2872e6929";
+        private static final String DB_URL = "jdbc:postgresql://postgres:5432/test-db?loggerLevel=OFF&options=-c timezone=America/Sao_Paulo";
 
         private Network network = Network.newNetwork();
 
-        private KeycloakContainer keycloak = new KeycloakContainer("quay.io/keycloak/keycloak:18.0.2")
+        private KeycloakContainer keycloak = new KeycloakContainer("quay.io/keycloak/keycloak:24.0.1")
                         .withAdminUsername("admin")
-                        .withAdminPassword("tops3cr3t")
+                        .withAdminPassword("admin123")
                         .withProviderClassesFrom("target/classes")
-                        .withEnv("DEBUG_MODE", "true")
-                        .withEnv("DEBUG_PORT", "8000")
-                        .withEnv("JAVA_OPTS", "-agentlib:jdwp=transport=dt_socket,server=y,address=*:8000,suspend=n")
-                        .withExposedPorts(8080, 8000)
+                        .withDebug()
+                        .withDebugFixedPort(8000, false)
+                        .withExposedPorts(8080)
                         .withNetwork(network)
                         .withRealmImportFile("realm-export.json")
                         .withCopyFileToContainer(MountableFile.forClasspathResource("keycloak.conf"),
                                         "/opt/keycloak/conf/keycloak.conf")
+                        .withEnv("KC_DB", "postgres")
+                        .withEnv("KC_DB_URL", DB_URL)
+                        .withEnv("KC_DB_USERNAME", "sa")
+                        .withEnv("KC_DB_PASSWORD", "sa")
                         .withEnv("TZ", "America/Sao_Paulo");
 
         private PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13.11")
@@ -97,6 +100,8 @@ public class DbUserProviterTest {
                                 .build();
 
                 realm = client.realm("db-user-realm");
+
+                System.out.println("Configuration: " + keycloak.getAuthServerUrl() + "/admin/master/console/#/db-user-realm/user-federation/db-user-provider/" + USER_PROVIDER_ID);
         }
 
         @Test
@@ -149,14 +154,14 @@ public class DbUserProviterTest {
                 RoleResource role = realm.roles().get("leader");
                 assertNotNull(role, "Leader role");
 
-                Set<UserRepresentation> roleUserMembers = role.getRoleUserMembers();
+                List<UserRepresentation> roleUserMembers = role.getUserMembers();
                 assertEquals(1, roleUserMembers.size(), "There can be only one");
                 assertEquals("hank", roleUserMembers.stream().map(u -> u.getUsername()).findFirst().get(), "Role");
 
                 role = realm.roles().get("default-roles-db-user-realm");
                 assertNotNull(role, "Default role");
 
-                roleUserMembers = role.getRoleUserMembers();
+                roleUserMembers = role.getUserMembers();
                 assertEquals(realm.users().count(), roleUserMembers.size(), "All users");
 
                 UserRepresentation user = realm.users().search("master").get(0);
@@ -190,13 +195,13 @@ public class DbUserProviterTest {
                 RoleResource role = realm.roles().get("leader");
                 assertNotNull(role, "Leader role");
 
-                Set<UserRepresentation> roleUserMembers = role.getRoleUserMembers();
+                List<UserRepresentation> roleUserMembers = role.getUserMembers();
                 assertEquals(0, roleUserMembers.size(), "Role removed");
 
                 role = realm.roles().get("ex-leader");
                 assertNotNull(role, "Ex-leader role");
 
-                roleUserMembers = role.getRoleUserMembers();
+                roleUserMembers = role.getUserMembers();
                 assertEquals(1, roleUserMembers.size(), "Role member");
                 assertEquals("hank", roleUserMembers.stream().map(u -> u.getUsername()).findFirst().get(), "Role");
 
@@ -228,9 +233,9 @@ public class DbUserProviterTest {
                 JdbcDatabaseDelegate containerDelegate = new JdbcDatabaseDelegate(postgres, "");
                 ScriptUtils.runInitScript(containerDelegate, "update-script2.sql");
 
-                String apiPath = keycloak.getAuthServerUrl() + "realms/db-user-realm/db-user/";
-                DbUserResource resource = client.proxy(DbUserResource.class, new URI(apiPath));
-                resource.sync("master", null);
+                String apiPath = keycloak.getAuthServerUrl() + "/admin/realms/db-user-realm/db-user/";
+                DbUserResourceApi resource = client.proxy(DbUserResourceApi.class, new URI(apiPath));
+                resource.sync("master");
 
                 UserRepresentation user = realm.users().search("master").get(0);
                 assertEquals("Missing", user.getFirstName(), "First name");
@@ -294,10 +299,11 @@ public class DbUserProviterTest {
         @Test
         @Order(10)
         public void databaseMetrics() throws URISyntaxException {
-                String apiPath = keycloak.getAuthServerUrl() + "realms/db-user-realm/db-user/";
-                DbUserResource resource = client.proxy(DbUserResource.class, new URI(apiPath));
-                String metrics = resource.metrics(null);
+                String apiPath = keycloak.getAuthServerUrl() + "/admin/realms/db-user-realm/db-user/";
+                DbUserResourceApi resource = client.proxy(DbUserResourceApi.class, new URI(apiPath));
+                String metrics = resource.metrics();
 
                 assertNotEquals("Metrics Disabled", metrics);
         }
 }
+

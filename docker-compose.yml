@@ -1,0 +1,17 @@
+version: '3'
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.1
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KEYCLOAK_LOGLEVEL: INFO
+      ROOT_LOGLEVEL: INFO
+    volumes:
+      - ./target/keycloak-db-user-federation-${VERSION}.jar:/opt/keycloak/providers/keycloak-db-user-federation-${VERSION}.jar
+      - ./src/test/resources/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    ports:
+      - "8080:8080"
+    command:
+      - start-dev
+      - --import-realm

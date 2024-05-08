@@ -57,12 +57,12 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         validateDbData(username, email, data);
         Set<RequiredAction> actions = getRequiredActions(data);
 
-        UserModel user = session.userLocalStorage().getUserByUsername(realm, username);
+        UserModel user = session.users().getUserByUsername(realm, username);
 
         Importation importation;
 
         if (user == null) {
-            user = session.userLocalStorage().addUser(realm, username);
+            user = session.users().addUser(realm, username);
             user.setFederationLink(model.getId());
             importation = Importation.ADDED;
             LOGGER.debugv("{0} - Created user {1}", realm.getId(), username);
@@ -109,7 +109,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         RoleModel role = KeycloakModelUtils.getRoleFromString(realm, roleName);
 
         if (role == null) {
-            role = session.roleStorageManager().addRealmRole(realm, roleName);
+            role = session.roles().addRealmRole(realm, roleName);
             role.setDescription("db-user-provider");
 
             roleRoot.addCompositeRole(role);
@@ -124,7 +124,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         RoleModel roleRoot = KeycloakModelUtils.getRoleFromString(realm, rootRoleName);
 
         if (roleRoot == null) {
-            roleRoot = session.roleStorageManager().addRealmRole(realm, rootRoleName);
+            roleRoot = session.roles().addRealmRole(realm, rootRoleName);
             roleRoot.setDescription("db-user-provider");
         }
         return roleRoot;

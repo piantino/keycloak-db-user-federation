@@ -3,10 +3,13 @@ package com.github.piantino.keycloak.rest;
 import org.keycloak.Config.Scope;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.services.resource.RealmResourceProvider;
-import org.keycloak.services.resource.RealmResourceProviderFactory;
+import org.keycloak.models.RealmModel;
+import org.keycloak.services.resources.admin.AdminEventBuilder;
+import org.keycloak.services.resources.admin.ext.AdminRealmResourceProvider;
+import org.keycloak.services.resources.admin.ext.AdminRealmResourceProviderFactory;
+import org.keycloak.services.resources.admin.permissions.AdminPermissionEvaluator;
 
-public class DbUserResourceProviderFactory implements RealmResourceProviderFactory {
+public class DbUserResourceProviderFactory implements AdminRealmResourceProviderFactory, AdminRealmResourceProvider {
 
     @Override
     public String getId() {
@@ -14,8 +17,8 @@ public class DbUserResourceProviderFactory implements RealmResourceProviderFacto
     }
 
     @Override
-    public RealmResourceProvider create(KeycloakSession session) {
-        return new DbUserResourceProvider(session);
+    public AdminRealmResourceProvider create(KeycloakSession session) {
+        return this;
     }
 
     @Override
@@ -31,6 +34,11 @@ public class DbUserResourceProviderFactory implements RealmResourceProviderFacto
     @Override
     public void close() {
         // Do nothing
+    }
+
+      @Override
+    public Object getResource(KeycloakSession session, RealmModel realm, AdminPermissionEvaluator auth, AdminEventBuilder adminEvent) {
+        return new DbUserResource(session, auth);
     }
 
 }
