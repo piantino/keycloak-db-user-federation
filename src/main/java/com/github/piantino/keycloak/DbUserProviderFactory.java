@@ -199,8 +199,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                                 }
                             } catch (Throwable e) {
                                 result.increaseFailed();
-                                LOGGER.errorv(e, "{0} - Error on import {1}", realmId,
-                                        data.get(DbUserProvider.Column.username.name()));
+                                LOGGER.errorv(e, "{0} - Error on import {1}", realmId, username);
                             }
                         }
                     });
