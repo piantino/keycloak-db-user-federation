@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,6 +18,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
+import org.apache.commons.lang.RandomStringUtils;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.component.ComponentValidationException;
@@ -42,6 +44,8 @@ import io.agroal.api.AgroalDataSource;
 import io.agroal.api.AgroalDataSourceMetrics;
 
 public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserProvider>, ImportSynchronization {
+
+    private static final int LOG_PARTIAL_COUNT = 1000;
 
     protected static final Logger LOGGER = Logger.getLogger(DbUserProviderFactory.class);
 
@@ -81,12 +85,14 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     public SynchronizationResult sync(KeycloakSessionFactory sessionFactory, String realmId,
             UserStorageProviderModel model) {
 
-        LOGGER.infov("{0} - Sync all started", realmId);
+        String importId = createImportId();
+        LOGGER.infov("[{0}] Sync all {1} started", importId, realmId);
 
         String sql = model.get(DataSouceConfiguration.SYNC_SQL);
-        SynchronizationResult result = importUsers(sessionFactory, realmId, model, sql, (ps) -> {
+        SynchronizationResult result = importUsers(importId, sessionFactory, realmId, model, sql, (ps) -> {
         });
-        LOGGER.infov("{0} - Sync all: {1}", realmId, result);
+
+        LOGGER.infov("[{0}] Sync all {1} finished: {2}", importId, realmId, result);
         return result;
     }
 
@@ -94,19 +100,21 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     public SynchronizationResult syncSince(Date lastSync, KeycloakSessionFactory sessionFactory, String realmId,
             UserStorageProviderModel model) {
 
+        String importId = createImportId();
         Timestamp timeStamp = new Timestamp(lastSync.getTime());
-        LOGGER.debugv("{0} - Search users updated since {1}", realmId, timeStamp);
+
+        LOGGER.infov("[{0}] Sync since {1} started {2}", importId, realmId, timeStamp);
 
         String sql = model.get(DataSouceConfiguration.SYNC_SINCE_SQL);
 
-        SynchronizationResult result = importUsers(sessionFactory, realmId, model, sql, (ps) -> {
+        SynchronizationResult result = importUsers(importId, sessionFactory, realmId, model, sql, (ps) -> {
             try {
                 ps.setTimestamp(1, timeStamp);
             } catch (SQLException e) {
                 throw new DbUserProviderException("Error configure sync since " + timeStamp + " in " + realmId, e);
             }
         });
-        LOGGER.infov("{0} - Sync since {1}: {2}", realmId, timeStamp, result);
+        LOGGER.infov("[{0}] Sync since {1} finished: {2}", importId, realmId, result);
         return result;
     }
 
@@ -121,15 +129,20 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     public SynchronizationResult syncUsername(String username, KeycloakSessionFactory sessionFactory, String realmId,
             UserStorageProviderModel model) {
 
+        String importId = createImportId();
+
+        LOGGER.infov("[{0}] Sync user {1} {2}", importId, realmId, username);
+
         String sql = model.get(DataSouceConfiguration.SYNC_ONE_SQL);
-        SynchronizationResult result = importUsers(sessionFactory, realmId, model, sql, (ps) -> {
+        SynchronizationResult result = importUsers(importId, sessionFactory, realmId, model, sql, (ps) -> {
             try {
                 ps.setString(1, username);
             } catch (SQLException e) {
                 throw new DbUserProviderException("Error configure sync user " + username + " in " + realmId, e);
             }
         });
-        LOGGER.infov("{0} - Sync username {1}: {2}", realmId, username, result);
+        LOGGER.infov("[{0}] - Sync user {1} {2}: ({3})", importId, realmId, username, result);
+
         return result;
     }
 
@@ -141,16 +154,16 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     public static AgroalDataSourceMetrics getDataSourceMetrics(RealmModel realm) {
         UserStorageProviderModel model = getModel(realm);
         return getDataSource(model).getMetrics();
-	}
+    }
 
     public static UserStorageProviderModel getModel(RealmModel realm) {
-		return realm.getUserStorageProvidersStream()
-				.filter(fedProvider -> Objects.equals(fedProvider.getProviderId(), DbUserProviderFactory.PROVIDER_ID))
-				.findFirst()
-				.orElseThrow(() -> new DbUserProviderException(DbUserProviderFactory.PROVIDER_ID + " not configured"));
-	}
+        return realm.getUserStorageProvidersStream()
+                .filter(fedProvider -> Objects.equals(fedProvider.getProviderId(), DbUserProviderFactory.PROVIDER_ID))
+                .findFirst()
+                .orElseThrow(() -> new DbUserProviderException(DbUserProviderFactory.PROVIDER_ID + " not configured"));
+    }
 
-    private SynchronizationResult importUsers(KeycloakSessionFactory sessionFactory, String realmId,
+    private SynchronizationResult importUsers(String importId, KeycloakSessionFactory sessionFactory, String realmId,
             UserStorageProviderModel model, String sql, Consumer<PreparedStatement> psConsumer) {
 
         SynchronizationResult result = new SynchronizationResult();
@@ -158,7 +171,8 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         AgroalDataSource ds = DbUserProviderFactory.getDataSource(model);
 
         try (Connection con = ds.getConnection();
-                PreparedStatement ps = con.prepareStatement(sql);) {
+                PreparedStatement ps = con.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE,
+                        ResultSet.CONCUR_READ_ONLY);) {
 
             psConsumer.accept(ps);
 
@@ -167,14 +181,19 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                 ResultSetMetaData md = rs.getMetaData();
                 int columns = md.getColumnCount();
 
+                float total = getUserTotal(importId, rs);
+                int counter = 0;
+
                 while (rs.next()) {
-                    Map<String, Object> data = new HashMap<String, Object>(columns);
+                    counter++;
+
+                    HashMap<String, Object> data = new HashMap<String, Object>(columns);
                     for (int i = 1; i <= columns; ++i) {
                         data.put(md.getColumnName(i).toLowerCase(), rs.getObject(i));
                     }
                     String username = (String) data.get(Column.username.toString());
 
-                    LOGGER.debugv("{0} - Syncing user {1}", realmId, username);
+                    logDebugData(importId, data);
 
                     // Process each user in it's own transaction to avoid global fail
                     KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
@@ -189,7 +208,8 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                             try {
 
                                 List<String> roles = getRoles(model, con, username);
-                                Importation importation = provider.importUser(currentRealm, model, data, roles);
+                                Importation importation = provider.importUser(importId, currentRealm, model, data,
+                                        roles);
 
                                 if (importation == Importation.ADDED) {
                                     result.increaseAdded();
@@ -198,10 +218,12 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                                 }
                             } catch (Throwable e) {
                                 result.increaseFailed();
-                                LOGGER.errorv(e, "{0} - Error on import {1}", realmId, username);
+                                LOGGER.errorv(e, "[{0}] Sync error {1}", importId, username);
                             }
                         }
                     });
+
+                    logPartial(importId, total, counter);
                 }
             }
         } catch (SQLException e) {
@@ -239,4 +261,33 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         });
     }
 
+    private String createImportId() {
+        return RandomStringUtils.randomAlphanumeric(7);
+    }
+
+    private int getUserTotal(String importId, ResultSet rs) throws SQLException {
+        try {
+            int rowCount = rs.last() ? rs.getRow() : 0;
+            rs.beforeFirst();
+            LOGGER.debugv("[{0}] Sync total {1}", importId, rowCount);
+            return rowCount;
+        } catch (SQLFeatureNotSupportedException e) {
+            LOGGER.warnv("[{0}] Sync total unknow (JDBC driver feature not supported)", importId);
+            return -1;
+        }
+    }
+
+    private void logDebugData(String importId, HashMap<String, Object> data) {
+        if (LOGGER.isDebugEnabled()) {
+            Map<String, Object> clone = (HashMap<String, Object>) data.clone();
+            clone.computeIfPresent(Column.temp_password.name(), (String x, Object y) -> "***");
+            LOGGER.debugv("[{0}] Sync data {1}", importId, clone);
+        }
+    }
+
+    private void logPartial(String importId, float total, int counter) {
+        if (counter % LOG_PARTIAL_COUNT == 0) {
+            LOGGER.infov("[{0}] Sync partial {1}/{2} ({3,number,#}%)", importId, counter, total, counter / total * 100);
+        }
+    }
 }

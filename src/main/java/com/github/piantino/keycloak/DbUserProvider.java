@@ -49,7 +49,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         this.session = session;
     }
 
-    public Importation importUser(RealmModel realm, ComponentModel model, Map<String, Object> data,
+    public Importation importUser(String importId, RealmModel realm, ComponentModel model, Map<String, Object> data,
             List<String> roles) {
         String username = (String) data.get(Column.username.name());
         String email = (String) data.get(Column.email.name());
@@ -65,7 +65,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
             user = session.userLocalStorage().addUser(realm, username);
             user.setFederationLink(model.getId());
             importation = Importation.ADDED;
-            LOGGER.debugv("{0} - Created user {1}", realm.getId(), username);
+            LOGGER.debugv("[{0}] Created user {1}", importId, username);
 
             addRequiredActions(user, actions);
             createCredential(realm, user, data);
@@ -84,18 +84,18 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         user.setSingleAttribute(Column.updated.name(), toAttribute(data.get(Column.updated.name())));
 
         updateAttributes(user, data);
-        importRoles(realm, user, roles);
+        importRoles(importId, realm, user, roles);
 
         user.setSingleAttribute("synched", LocalDateTime.now().toString());
 
         return importation;
     }
 
-    private void importRoles(RealmModel realm, UserModel user, List<String> roles) {
+    private void importRoles(String importId, RealmModel realm, UserModel user, List<String> roles) {
         RoleModel roleRoot = getRoleRoot(realm);
 
         List<RoleModel> actualRoles = user.getRealmRoleMappingsStream().collect(Collectors.toList());
-        List<RoleModel> newRoles = roles.stream().map(roleName -> getRole(realm, roleRoot, roleName))
+        List<RoleModel> newRoles = roles.stream().map(roleName -> getRole(importId, realm, roleRoot, roleName))
                 .collect(Collectors.toList());
 
         actualRoles.stream().filter(r -> !newRoles.contains(r)).forEach(user::deleteRoleMapping);
@@ -105,7 +105,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
                 .forEach(user::grantRole);
     }
 
-    private RoleModel getRole(RealmModel realm, RoleModel roleRoot, String roleName) {
+    private RoleModel getRole(String importId, RealmModel realm, RoleModel roleRoot, String roleName) {
         RoleModel role = KeycloakModelUtils.getRoleFromString(realm, roleName);
 
         if (role == null) {
@@ -114,7 +114,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
 
             roleRoot.addCompositeRole(role);
 
-            LOGGER.debugv("{0} - Created role {1}", realm.getId(), roleName);
+            LOGGER.debugv("[{0}] Created role {1}", importId, roleName);
         }
         return role;
     }
@@ -144,7 +144,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
 
     private void validateDbData(String username, String email, Map<String, Object> data) {
         if (!Validation.isUsernameValid(username)) {
-            throw new DbUserProviderException("User with invalid user name: " + username);
+            throw new DbUserProviderException("User with invalid username: (" + username + ")");
         }
 
         if (email != null && !Validation.isEmailValid(email)) {
