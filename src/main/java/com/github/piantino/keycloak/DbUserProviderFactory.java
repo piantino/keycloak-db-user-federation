@@ -141,7 +141,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                 throw new DbUserProviderException("Error configure sync user " + username + " in " + realmId, e);
             }
         });
-        LOGGER.infov("[{0}] - Sync user {1} {2}: ({3})", importId, realmId, username, result);
+        LOGGER.infov("[{0}] Sync user {1} {2}: ({3})", importId, realmId, username, result);
 
         return result;
     }
@@ -286,8 +286,12 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     }
 
     private void logPartial(String importId, float total, int counter) {
-        if (counter % LOG_PARTIAL_COUNT == 0) {
+        if (counter % LOG_PARTIAL_COUNT != 0) {
+            return;
+        }
+        if (total > -1) {
             LOGGER.infov("[{0}] Sync partial {1}/{2} ({3,number,#}%)", importId, counter, total, counter / total * 100);
         }
+        LOGGER.infov("[{0}] Sync partial {1}", importId, counter);
     }
 }
