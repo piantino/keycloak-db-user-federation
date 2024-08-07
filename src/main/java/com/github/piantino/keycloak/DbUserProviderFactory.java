@@ -291,6 +291,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         }
         if (total > -1) {
             LOGGER.infov("[{0}] Sync partial {1}/{2} ({3,number,#}%)", importId, counter, total, counter / total * 100);
+            return;
         }
         LOGGER.infov("[{0}] Sync partial {1}", importId, counter);
     }
