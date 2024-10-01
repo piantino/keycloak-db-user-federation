@@ -5,6 +5,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.ws.rs.ForbiddenException;
+import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.PathParam;
@@ -58,8 +59,13 @@ public class DbUserResourceProvider extends AdminRoot implements RealmResourcePr
 		KeycloakSessionFactory sessionFactory = session.getKeycloakSessionFactory();
 
 		SynchronizationResult result = this.factory.syncUsername(username, sessionFactory, realm.getId(), model);
+
+		if (result.getFailed() > 0) {
+			throw new InternalServerErrorException("Sync failed for username " + username);
+		}
+
 		if (result.getAdded() == 0 && result.getUpdated() == 0) {
-			throw new NotFoundException("Username " + username+ " not found");
+			throw new NotFoundException("Username " + username + " not found");
 		}
 	}
 
