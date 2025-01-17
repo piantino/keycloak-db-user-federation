@@ -26,6 +26,20 @@
     </repository>
   </distributionManagement>
 
+  <developers>
+    <developer>
+      <name>Andre Piantino</name>
+      <organization>Github</organization>
+      <organizationUrl>https://github.com/piantino</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:git://github.com/piantino/keycloak-db-user-federation.git</connection>
+    <developerConnection>scm:git:ssh://github.com:piantino/keycloak-db-user-federation.git</developerConnection>
+    <url>https://github.com/piantino/keycloak-db-user-federation/edit/main/</url>
+  </scm>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>17</maven.compiler.source>
