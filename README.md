@@ -116,3 +116,28 @@ http://localhost:8080/admin/master/console/#/db-user-realm/user-federation/db-us
 Install act (https://github.com/nektos/act) and run the command:
 
 `act -P ubuntu-latest=quay.io/jamezp/act-maven`
+
+
+## Deploy
+
+`mvn deploy`
+
+> Upon release, your component will be published to Central: this typically occurs within 30 minutes, though updates to search can take up to four hours.
+
+https://central.sonatype.com/
+
+### Deployment history
+
+https://central.sonatype.com/publishing/deployments
+
+### Configuration
+
+https://central.sonatype.org/publish/publish-portal-maven/
+
+
+The gpg keys can be send manually:
+
+`gpg --output piantino@gmail.com.gpg --export piantino@gmail.com`
+
+https://keys.openpgp.org/upload
+
