@@ -7,7 +7,7 @@
 
   <groupId>io.github.piantino</groupId>
   <artifactId>keycloak-db-user-federation</artifactId>
-  <version>1.1.1</version>
+  <version>1.2.0</version>
 
   <name>keycloak-db-user-federation</name>
   <description>A Keycloak extension for user provider from database with synchronization in user local storage (Keycloak database).</description>
@@ -46,10 +46,10 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
 
-    <keycloak.version>24.0.5</keycloak.version>
+    <keycloak.version>25.0.6</keycloak.version>
 
     <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
     <maven-surefire-plugin.version>3.1.2</maven-surefire-plugin.version>
@@ -58,6 +58,8 @@
     <maven-gpg-plugin.version>1.5</maven-gpg-plugin.version>
     <maven-javadoc-plugin.version>2.9.1</maven-javadoc-plugin.version>
     <maven-source-plugin.version>2.2.1</maven-source-plugin.version>
+
+    <shrinkwrap-resolver.version>3.3.3</shrinkwrap-resolver.version>
   </properties>
 
   <dependencies>
@@ -86,12 +88,6 @@
       <version>${keycloak.version}</version>
       <scope>provided</scope>
     </dependency>
-    <dependency>
-      <groupId>org.keycloak</groupId>
-      <artifactId>keycloak-model-legacy</artifactId>
-      <version>${keycloak.version}</version>
-      <scope>provided</scope>
-    </dependency>
 
     <dependency>
       <groupId>io.agroal</groupId>
@@ -115,7 +111,7 @@
     <dependency>
       <groupId>com.github.dasniko</groupId>
       <artifactId>testcontainers-keycloak</artifactId>
-      <version>3.3.0</version>
+      <version>3.4.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -128,6 +124,12 @@
       <groupId>org.keycloak</groupId>
       <artifactId>keycloak-authz-client</artifactId>
       <version>${keycloak.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jboss.shrinkwrap.resolver</groupId>
+      <artifactId>shrinkwrap-resolver-impl-maven-archive</artifactId>
+      <version>${shrinkwrap-resolver.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

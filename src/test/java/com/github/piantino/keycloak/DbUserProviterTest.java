@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -18,6 +19,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.jboss.shrinkwrap.resolver.api.maven.Maven;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
@@ -63,13 +65,14 @@ public class DbUserProviterTest {
 
         private Network network = Network.newNetwork();
 
-        private KeycloakContainer keycloak = new KeycloakContainer("quay.io/keycloak/keycloak:24.0.4")
+        private KeycloakContainer keycloak = new KeycloakContainer("quay.io/keycloak/keycloak:25.0.6")
                         .withAdminUsername("admin")
                         .withAdminPassword("admin123")
                         .withProviderClassesFrom("target/classes")
-                        .withDebug()
-                        .withDebugFixedPort(8000, false)
-                        .withExposedPorts(8080)
+                        .withProviderLibsFrom(Maven.resolver()
+                                        .loadPomFromFile("./pom.xml")
+                                        .resolve("org.apache.commons:commons-lang3")
+                                        .withoutTransitivity().asList(File.class))
                         .withNetwork(network)
                         .withRealmImportFile("realm-export.json")
                         .withCopyFileToContainer(MountableFile.forClasspathResource("keycloak.conf"),
@@ -106,7 +109,9 @@ public class DbUserProviterTest {
 
                 realm = client.realm("db-user-realm");
 
-                System.out.println("Configuration: " + keycloak.getAuthServerUrl() + "/admin/master/console/#/db-user-realm/user-federation/db-user-provider/" + USER_PROVIDER_ID);
+                System.out.println("Configuration: " + keycloak.getAuthServerUrl()
+                                + "/admin/master/console/#/db-user-realm/user-federation/db-user-provider/"
+                                + USER_PROVIDER_ID);
         }
 
         @Test
@@ -311,4 +316,3 @@ public class DbUserProviterTest {
                 assertNotEquals("Metrics Disabled", metrics);
         }
 }
-
