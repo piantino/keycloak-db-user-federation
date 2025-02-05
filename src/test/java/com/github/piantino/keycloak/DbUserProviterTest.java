@@ -313,6 +313,8 @@ public class DbUserProviterTest {
                 DbUserResourceApi resource = client.proxy(DbUserResourceApi.class, new URI(apiPath));
                 String metrics = resource.metrics();
 
+                System.out.println(metrics);
+
                 assertNotEquals("Metrics Disabled", metrics);
         }
 }

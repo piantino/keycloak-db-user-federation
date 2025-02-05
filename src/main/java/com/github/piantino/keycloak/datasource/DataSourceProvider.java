@@ -12,16 +12,18 @@ import static io.agroal.api.configuration.supplier.AgroalPropertiesReader.MIN_SI
 import static io.agroal.api.configuration.supplier.AgroalPropertiesReader.PRINCIPAL;
 import static io.agroal.api.configuration.supplier.AgroalPropertiesReader.PROVIDER_CLASS_NAME;
 
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 
 import io.agroal.api.AgroalDataSource;
 import io.agroal.api.configuration.supplier.AgroalPropertiesReader;
 
 public class DataSourceProvider {
+
+    private static final Logger LOGGER = Logger.getLogger(DataSourceProvider.class);
 
     public static AgroalDataSource create(ComponentModel model) {
         Map<String, String> props = new HashMap<>();
@@ -40,7 +42,8 @@ public class DataSourceProvider {
 
         try {
             return AgroalDataSource.from(new AgroalPropertiesReader().readProperties(props));       
-        } catch (SQLException e) {
+        } catch (Throwable e) {
+            LOGGER.error("Fail to create Datasource in " + model.getParentId(), e);
             throw new RuntimeException("Fail to create Datasource in " + model.getParentId(), e);
         }
     }
