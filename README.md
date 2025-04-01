@@ -8,6 +8,7 @@ A Keycloak extension for user providers from a database with synchronization in 
 |-----------------------------|----------|
 | 1.0.x                       | 18.0.2   |
 | 1.1.x                       | 24.0.x   |
+| 1.2.x                       | 26.0.x   |
 
 Attention, jump to 24.0 because this security problem:
 https://github.com/keycloak/keycloak/security/advisories/GHSA-mpwq-j3xf-7m5w
@@ -38,18 +39,19 @@ SELECT name FROM roles WHERE username = ?
 
 ### SQL columns
 
-| Colunm name      | Required | Type               | Notes          |
-|------------------|----------|--------------------|----------------|
-| username         | Yes      | String             |                |
-| email            |          | String             | A valid e-mail |
-| email_verified   |          | Boolean or "y"/"n" |                |
-| enabled          |          | Boolean or "y"/"n" |                |
-| first_name       |          | String             |                |
-| last_name        |          | String             |                |
-| temp_password    |          | String             | Only on creation. Recommended use with UPDATE_PASSWORD |
-| required_actions |          | String             | Only on creation. Separated by comma |
-| updated          | Yes      | Timestamp          | When this user was update in DB      |
-| <custom_attr>    |          | Any                | With be a string attribute           |
+| Colunm name        | Required | Type               | Notes                                |
+|--------------------|----------|--------------------|--------------------------------------|
+| username           | Yes      | String             |                                      |
+| email              |          | String             | A valid e-mail                       |
+| email_verified     |          | Boolean or "y"/"n" |                                      |
+| enabled            |          | Boolean or "y"/"n" |                                      |
+| first_name         |          | String             |                                      |
+| last_name          |          | String             |                                      |
+| temp_password      |          | String             | Only on creation. Recommended use with UPDATE_PASSWORD |
+| required_actions   |          | String             | Only on creation. Separated by comma |
+| updated            | Yes      | Timestamp          | When this user was update in DB      |
+| marked_for_removal |          | Any                | If exists the user will be removed   |
+| <custom_attr>      |          | Any                | With be a string attribute           |
 
 Attention, no empty or blank string is allowed, use NULL instead.
 
