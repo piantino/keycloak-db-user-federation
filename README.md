@@ -8,7 +8,7 @@ A Keycloak extension for user providers from a database with synchronization in 
 |-----------------------------|----------|
 | 1.0.x                       | 18.0.2   |
 | 1.1.x                       | 24.0.x   |
-| 1.2.x                       | 26.0.x   |
+| 1.2.x                       | 25.0.x   |
 
 Attention, jump to 24.0 because this security problem:
 https://github.com/keycloak/keycloak/security/advisories/GHSA-mpwq-j3xf-7m5w
