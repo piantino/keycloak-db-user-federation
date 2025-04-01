@@ -28,7 +28,7 @@ import com.github.piantino.keycloak.exception.DbUserProviderException;
 public class DbUserProvider implements UserStorageProvider, ImportedUserValidation {
 
     public enum Column {
-        username, email, email_verified, enabled, first_name, last_name, temp_password, required_actions, updated
+        username, email, email_verified, enabled, first_name, last_name, temp_password, required_actions, updated, marked_for_removal
     }
 
     public enum Importation {
@@ -137,8 +137,11 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
 
     @Override
     public UserModel validate(RealmModel realm, UserModel user) {
-        // TODO: Check if the user exists in the external source
-        // Return null to remove localy UserModel
+        if (user.getFirstAttribute(Column.marked_for_removal.name()) != null) {
+            LOGGER.debugv("User {0} {1} was marked for removal", realm.getId(), user.getUsername());
+            // Return null to remove localy UserModel
+            return null;
+        }
         return user;
     }
 

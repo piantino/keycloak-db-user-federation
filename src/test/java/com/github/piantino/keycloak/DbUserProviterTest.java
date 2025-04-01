@@ -33,6 +33,7 @@ import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.RoleResource;
+import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.authorization.client.AuthzClient;
 import org.keycloak.authorization.client.Configuration;
 import org.keycloak.authorization.client.util.HttpResponseException;
@@ -51,6 +52,7 @@ import org.testcontainers.utility.MountableFile;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.github.piantino.keycloak.DbUserProvider.Column;
 import com.github.piantino.keycloak.rest.DbUserResourceApi;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
@@ -308,6 +310,20 @@ public class DbUserProviterTest {
 
         @Test
         @Order(10)
+        public void removeUser() {
+                UsersResource userResource = realm.users();
+
+                UserRepresentation user = userResource.search("master").get(0);
+                user.getAttributes().put(Column.marked_for_removal.name(), Arrays.asList("true"));
+                realm.users().get(user.getId()).update(user);
+
+                List<UserRepresentation> users = realm.users().search("master");
+
+                assertEquals(users.size(), 0, "User was removed");
+        }
+
+        @Test
+        @Order(11)
         public void databaseMetrics() throws URISyntaxException {
                 String apiPath = keycloak.getAuthServerUrl() + "/admin/realms/db-user-realm/db-user/";
                 DbUserResourceApi resource = client.proxy(DbUserResourceApi.class, new URI(apiPath));
