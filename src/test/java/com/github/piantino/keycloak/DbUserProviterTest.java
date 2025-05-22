@@ -33,6 +33,7 @@ import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.RoleResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.authorization.client.AuthzClient;
 import org.keycloak.authorization.client.Configuration;
@@ -41,13 +42,16 @@ import org.keycloak.common.VerificationException;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.IDToken;
 import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.SynchronizationResultRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.ext.ScriptUtils;
 import org.testcontainers.jdbc.JdbcDatabaseDelegate;
+import org.testcontainers.utility.DockerLoggerFactory;
 import org.testcontainers.utility.MountableFile;
 
 import com.fasterxml.jackson.core.JsonParseException;
@@ -83,7 +87,13 @@ public class DbUserProviterTest {
                         .withEnv("KC_DB_URL", DB_URL)
                         .withEnv("KC_DB_USERNAME", "sa")
                         .withEnv("KC_DB_PASSWORD", "sa")
-                        .withEnv("TZ", "America/Sao_Paulo");
+                        .withEnv("TZ", "America/Sao_Paulo")
+						.withLogConsumer(new Slf4jLogConsumer(DockerLoggerFactory.getLogger("")) {
+							public void accept(org.testcontainers.containers.output.OutputFrame outputFrame) {
+								super.accept(outputFrame);
+								System.out.print(outputFrame.getUtf8String());
+							};
+						});
 
         private PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13.11")
                         .withDatabaseName("test-db")
@@ -185,6 +195,20 @@ public class DbUserProviterTest {
         }
 
         @Test
+        @Order(3)
+        public void valitateGroupImportation() {
+        	assertEquals(realm.groups().count().get("count"), 40, "Groups imported");
+        }
+
+        @Test
+        @Order(3)
+        public void valitateUserGroupImportation() {
+        	validateUserInGroups("hank", "DTI/DSA/SAS");
+        	validateUserInGroups("sheila", "DTI/DSA/SAS");
+        	validateUserInGroups("uni", "DTI/DSA/SSS");
+        }
+
+        @Test
         @Order(4)
         public void importChangedUsersFromDB() {
                 JdbcDatabaseDelegate containerDelegate = new JdbcDatabaseDelegate(postgres, "");
@@ -225,6 +249,22 @@ public class DbUserProviterTest {
                 assertIterableEquals(expected, roles, "Master roles");
         }
 
+        @Test
+        @Order(5)
+        public void valitateGroupChanged() {
+        	assertEquals(39, realm.groups().count().get("count"), "Groups synchronized");
+        }
+        
+        @Test
+        @Order(5)
+        public void valitateUserGroupChanged() {
+        	assertEquals(39, realm.groups().count().get("count"), "Groups synchronized");
+        	
+        	validateUserInGroups("hank", "DTI/DSA/SSS");
+        	validateUserInGroups("sheila", "DTI/DSA/SAS");
+        	validateUserInGroups("uni", "DTI/DSA/SAS", "DTI/DSA/SSS", "K8S", "KC");
+        }
+        
         @Test
         @Order(6)
         public void validateUpdate() {
@@ -333,4 +373,12 @@ public class DbUserProviterTest {
 
                 assertNotEquals("Metrics Disabled", metrics);
         }
+        
+		private void validateUserInGroups(String username, String... expected) {
+			UserRepresentation userrep = realm.users().search(username).getFirst();
+        	UserResource userres = realm.users().get(userrep.getId());
+        	String[] groups = userres.groups().stream().map(GroupRepresentation::getName).sorted().toArray(String[]::new);
+            assertArrayEquals(expected, groups, "Groups for " + username);
+		}
+        
 }
