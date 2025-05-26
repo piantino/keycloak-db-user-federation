@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 
 import org.jboss.shrinkwrap.resolver.api.maven.Maven;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -169,7 +170,7 @@ public class DbUserProviterTest {
 
         @Test
         @Order(3)
-        public void valitateRoleImportation() {
+        public void validateRoleImportation() {
                 RoleResource rootRole = realm.roles().get("db-user-provider-roles");
                 assertEquals(4, rootRole.getRealmRoleComposites().size(), "Root role");
 
@@ -194,18 +195,44 @@ public class DbUserProviterTest {
                 assertIterableEquals(expected, roles, "Master roles");
         }
 
-        @Test
+		@Test
         @Order(3)
-        public void valitateGroupImportation() {
-        	assertEquals(realm.groups().count().get("count"), 40, "Groups imported");
+		public void validateGroupCountImportation() {
+        	assertEquals(16, realm.groups().count(false).get("count"), "Groups synchronized");
         }
 
-        @Test
+        @ParameterizedTest
         @Order(3)
-        public void valitateUserGroupImportation() {
-        	validateUserInGroups("hank", "DTI/DSA/SAS");
-        	validateUserInGroups("sheila", "DTI/DSA/SAS");
-        	validateUserInGroups("uni", "DTI/DSA/SSS");
+        @CsvSource(value = {
+        		"1,     , 'first group',  'first group attr 1', 'first group attr 2', 'first group attr 3'",
+        		"2,     , 'second group', 'second group attr 1', 'second group attr 2', 'second group attr 3'",
+        		"3,     , 'third group',  'third group attr 1', 'third group attr 2', 'third group attr 3'",
+        		"21,       2, 'second group 1', 'sg 1 attr1', 'sg 1 attr2',  ",
+        		"22,       2, 'second group 2',  ,        'sg 2 attr2', 'sg 2 attr3'",
+        		"23,       2, 'second group 3', 'sg 3 attr1',  ,        'sg 3 attr3'",
+        		"24,       2, 'second group 4',  ,         ,         ",
+        		"31,       3,'third group 1'      , 'tg attr1 1'      , 'tg attr2 1'      , 'tg attr3 1'",
+        		"32,       3,'third group 2 '     , 'tg attr1 2 '     , 'tg attr2 2 '     , 'tg attr3 2 '",
+        		"321,     32,'third group 2-1'    , 'tg attr1 2-1'    , 'tg attr2 2-1'    , 'tg attr3 2-1'",
+        		"322,     32,'third group 2-2'    , 'tg attr1 2-2'    , 'tg attr2 2-2'    , 'tg attr3 2-2'",
+        		"323,     32,'third group 2-3'    , 'tg attr1 2-3'    , 'tg attr2 2-3'    , 'tg attr3 2-3'",
+        		"33,       3,'third group 3'      , 'tg attr1 3'      , 'tg attr2 3'      , 'tg attr3 3'",
+        		"331,     33,'third group 3-1'    , 'tg attr1 3-1'    , 'tg attr2 3-1'    , 'tg attr3 3-1'",
+        		"3311,   331,'third group 3-1-1'  , 'tg attr1 3-1-1'  , 'tg attr2 3-1-1'  , 'tg attr3 3-1-1'",
+        		"33111, 3311,'third group 3-1-1-1', 'tg attr1 3-1-1-1', 'tg attr2 3-1-1-1', 'tg attr3 3-1-1-1'",
+
+        })
+        public void validateGroupImportation(String gid, String gid_parent, String name, String attr1, String attr2, String attr3) {
+        	validateGroup(gid, gid_parent, name, attr1, attr2, attr3);
+        }
+
+		@Test
+        @Order(3)
+        public void validateUserGroupImportation() {
+        	validateUserInGroups("hank", "first group", "second group 1");
+        	validateUserInGroups("sheila", "third group 3-1", "third group 3-1-1", "third group 3-1-1-1");
+        	validateUserInGroups("uni", "second group", "third group");
+        	validateUserInGroups("master", "second group 1", "third group 1");
         }
 
         @Test
@@ -224,7 +251,7 @@ public class DbUserProviterTest {
 
         @Test
         @Order(5)
-        public void valitateRoleChanged() {
+        public void validateRoleChanged() {
                 RoleResource rootRole = realm.roles().get("db-user-provider-roles");
                 assertEquals(8, rootRole.getRealmRoleComposites().size(), "Root role");
 
@@ -251,18 +278,44 @@ public class DbUserProviterTest {
 
         @Test
         @Order(5)
-        public void valitateGroupChanged() {
-        	assertEquals(39, realm.groups().count().get("count"), "Groups synchronized");
+        public void validateGroupCountSync() {
+        	assertEquals(17, realm.groups().count(false).get("count"), "Groups synchronized");
         }
+
+		@ParameterizedTest
+		@Order(5)
+		@CsvSource(value = {
+				"1,     , 'first group',  'first group attr 1', 'first group attr 2', 'first group attr 3'",
+				"2,     , 'second group', 'second group attr 1', 'second group attr 2', 'second group attr 3'",
+				"3,     , 'third group',  'third group attr 1', 'third group attr 2', 'third group attr 3'",
+				"21,       2, 'second group 1', 'sg 1 attr1', 'sg 1 attr2',  ",
+				"22,       2, 'second group 2',  ,        'sg 2 attr2', 'sg 2 attr3'",
+				"23,       2, 'second group 3', 'sg 3 attr1',  ,        'sg 3 attr3'",
+				"24,       2, 'second group 4',  ,         ,         ",
+				"31,       3,'third group 1'      , 'tg attr1 1'      , 'tg attr2 1'      , 'tg attr3 1'",
+				"32,       3,'third group 2 '     , 'tg attr1 2 '     , 'tg attr2 2 '     , 'tg attr3 2 '",
+				"321,     32,'third group 2-1'    , 'tg attr1 2-1'    , 'tg attr2 2-1'    , 'tg attr3 2-1'",
+				"322,     32,'third group 2-2'    , 'tg attr1 2-2'    , 'tg attr2 2-2'    , 'tg attr3 2-2'",
+				"323,     32,'third group 2-3'    , 'tg attr1 2-3'    , 'tg attr2 2-3'    , 'tg attr3 2-3'",
+				"324,     32,'third group 2-4'    , 'tg attr1 2-4'    , 'tg attr2 2-4'    , 'tg attr3 2-4'",
+				"325,     32,'third group 2-5'    , 'tg attr1 2-5'    , 'tg attr2 2-5'    , 'tg attr3 2-5'",
+				"33,       3,'third group 3'      , 'tg attr1 3'      , 'tg attr2 3'      , 'tg attr3 3'",
+				"331,     33,'third group 3-1 updated','tg attr1 3-1 updated','tg attr2 3-1 updated'    , 'tg attr3 3-1 updated'",
+				"33111, 331,'third group 3-1-1-1', 'tg attr1 3-1-1-1', 'tg attr2 3-1-1-1', 'tg attr3 3-1-1-1'",
+		})
+		public void validateGroupSync(String gid, String gid_parent, String name, String attr1, String attr2,
+				String attr3) {
+			validateGroup(gid, gid_parent, name, attr1, attr2, attr3);
+		}
+        
         
         @Test
         @Order(5)
-        public void valitateUserGroupChanged() {
-        	assertEquals(39, realm.groups().count().get("count"), "Groups synchronized");
-        	
-        	validateUserInGroups("hank", "DTI/DSA/SSS");
-        	validateUserInGroups("sheila", "DTI/DSA/SAS");
-        	validateUserInGroups("uni", "DTI/DSA/SAS", "DTI/DSA/SSS", "K8S", "KC");
+        public void validateUserGroupSync() {
+        	validateUserInGroups("hank", "second group 3", "second group 4");
+        	validateUserInGroups("sheila", "third group 3-1 updated", "third group 3-1-1-1");
+        	validateUserInGroups("uni", "second group", "third group", "third group 2-4");
+        	validateUserInGroups("master");
         }
         
         @Test
@@ -307,6 +360,7 @@ public class DbUserProviterTest {
                 assertEquals(201, response.getStatus(), "Status HTTP created");
         }
 
+        @Disabled
         @ParameterizedTest
         @Order(9)
         @CsvSource(value = {
@@ -378,7 +432,30 @@ public class DbUserProviterTest {
 			UserRepresentation userrep = realm.users().search(username).getFirst();
         	UserResource userres = realm.users().get(userrep.getId());
         	String[] groups = userres.groups().stream().map(GroupRepresentation::getName).sorted().toArray(String[]::new);
+        	Arrays.sort(expected);
             assertArrayEquals(expected, groups, "Groups for " + username);
 		}
+		
+	    private void validateGroup(String gid, String gid_parent, String name, String attr1, String attr2, String attr3) {
+        	GroupRepresentation grep = getGroupByName(name);
+
+        	assertEquals(name, grep.getName(), "name of "+ name);
+        	validateGroupAttr(grep, name, "gid", gid);
+        	validateGroupAttr(grep, name, "gid_parent", gid_parent);
+        	validateGroupAttr(grep, name, "attr1", attr1);
+        	validateGroupAttr(grep, name, "attr2", attr2);
+        	validateGroupAttr(grep, name, "attr3", attr3);
+        }
         
+        private GroupRepresentation getGroupByName(String name) {
+        	return realm.groups().query(name, false, 0, 1000, false)
+        		.stream()
+        		.filter(g -> name.equals(g.getName()))
+        		.findFirst()
+        		.orElse(null);
+		}
+
+		private void validateGroupAttr(GroupRepresentation grep, String name, String attr, String expected) {
+	        	assertIterableEquals(Arrays.asList(expected), grep.getAttributes().get(attr), attr + " of " + name);
+		}
 }

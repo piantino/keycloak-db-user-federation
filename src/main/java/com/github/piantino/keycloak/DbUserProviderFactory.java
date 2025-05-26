@@ -196,10 +196,16 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
 						public void run(KeycloakSession session) {
 							RealmModel currentRealm = session.realms().getRealm(realmId);
 							session.getContext().setRealm(currentRealm);
-
+							
 							GroupModel gm = getGroupModelByAttrGid(session.groups(), currentRealm, gid);
+							
+							// removing associated users before removing groups
+							session.users().getGroupMembersStream(currentRealm, gm)
+								.forEach(um -> {um.leaveGroup(gm);});
+
 							session.groups().removeGroup(currentRealm, gm);
 							result.increaseRemoved();
+							
 				        	LOGGER.debugv("[{0}] Removed group {1}", importId, gm.getName());
 						}
 					});
