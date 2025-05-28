@@ -1,5 +1,7 @@
 package com.github.piantino.keycloak;
 
+import static com.github.piantino.keycloak.DbProviderUtils.toAttributeValue;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -11,17 +13,22 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.component.ComponentValidationException;
+import org.keycloak.models.GroupModel;
+import org.keycloak.models.GroupProvider;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.KeycloakSessionTask;
@@ -36,6 +43,7 @@ import org.keycloak.storage.user.SynchronizationResult;
 import org.keycloak.utils.StringUtil;
 
 import com.github.piantino.keycloak.DbUserProvider.Column;
+import com.github.piantino.keycloak.DbUserProvider.ColumnGroups;
 import com.github.piantino.keycloak.DbUserProvider.Importation;
 import com.github.piantino.keycloak.datasource.DataSouceConfiguration;
 import com.github.piantino.keycloak.datasource.DataSourceProvider;
@@ -88,11 +96,144 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         String importId = createImportId();
         LOGGER.infov("[{0}] Sync all {1} started", importId, realmId);
 
+        LOGGER.infov("[{0}] Sync all groups {1} started", importId, realmId);
+        SynchronizationResult groupsResult = importGroups(importId, sessionFactory, realmId, model);
+        LOGGER.infov("[{0}] Sync all groups {1} finished: {2}", importId, realmId, groupsResult);
+
+        LOGGER.infov("[{0}] Sync all users {1} started", importId, realmId);
         String sql = model.get(DataSouceConfiguration.SYNC_SQL);
-        SynchronizationResult result = importUsers(importId, sessionFactory, realmId, model, sql, (ps) -> {
+        SynchronizationResult usersResult = importUsers(importId, sessionFactory, realmId, model, sql, (ps) -> {
         });
-        LOGGER.infov("[{0}] Sync all {1} finished: {2}", importId, realmId, result);
+        LOGGER.infov("[{0}] Sync all users {1} finished: {2}", importId, realmId, usersResult);
+        return usersResult;
+    }
+
+    private SynchronizationResult importGroups(String importId, KeycloakSessionFactory sessionFactory, String realmId,
+            UserStorageProviderModel model) {
+        SynchronizationResult result = new SynchronizationResult();
+
+        AgroalDataSource ds = DbUserProviderFactory.getDataSource(model);
+
+        Set<String> allGroupGids = getAllSynchronizedGroupIds(sessionFactory, realmId);
+
+        String sql = model.get(DataSouceConfiguration.SYNC_GROUP_SQL);
+
+        if (StringUtil.isBlank(sql)) {
+            return result;
+        }
+
+        try (Connection con = ds.getConnection();
+                PreparedStatement ps = con.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE,
+                        ResultSet.CONCUR_READ_ONLY);
+                ResultSet rs = ps.executeQuery();) {
+
+            ResultSetMetaData md = rs.getMetaData();
+            int columns = md.getColumnCount();
+
+            float total = getUserTotal(importId, rs);
+            int counter = 0;
+
+            while (rs.next()) {
+                counter++;
+
+                HashMap<String, String> data = new HashMap<>(columns);
+                for (int i = 1; i <= columns; ++i) {
+                    data.put(md.getColumnName(i).toLowerCase(), toAttributeValue(rs.getObject(i)));
+                }
+
+                logDebugData(importId, data);
+
+                // Process each user in it's own transaction to avoid global fail
+                KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
+
+                    @Override
+                    public void run(KeycloakSession session) {
+                        RealmModel currentRealm = session.realms().getRealm(realmId);
+                        session.getContext().setRealm(currentRealm);
+
+                        String name = data.get(ColumnGroups.name.name());
+                        String gid = data.get(ColumnGroups.gid.name());
+                        String gidParent = data.get(ColumnGroups.gid_parent.name());
+
+                        try {
+                            allGroupGids.remove(gid);
+
+                            GroupModel gmParent = getGroupModelByAttrGid(session.groups(), currentRealm, gidParent);
+
+                            GroupModel gm = getGroupModelByAttrGid(session.groups(), currentRealm, gid);
+                            if (gm == null) {
+                                gm = currentRealm.createGroup(gid, name, gmParent);
+                                LOGGER.debugv("[{0}] Created group {1}", importId, name);
+                                result.increaseAdded();
+                            } else {
+                                gm.setName(name);
+                                result.increaseUpdated();
+                            }
+
+                            for (Entry<String, String> entry : data.entrySet()) {
+                                if (!ColumnGroups.name.name().equals(entry.getKey())) {
+                                    gm.setSingleAttribute(entry.getKey(), entry.getValue());
+                                }
+                            }
+
+                            if (gmParent != null) {
+                                currentRealm.moveGroup(gm, gmParent);
+                            }
+                        } catch (Throwable e) {
+                            result.increaseFailed();
+                            LOGGER.errorv(e, "[{0}] Sync group error {1}", importId, name);
+                        }
+                    }
+                });
+
+                logPartial(importId, total, counter);
+            }
+
+            LOGGER.infov("[{0}] Removing groups no longer synced: {1}", importId, allGroupGids.size());
+
+            for (String gid : allGroupGids) {
+                // Process each user in it's own transaction to avoid global fail
+                KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
+
+                    @Override
+                    public void run(KeycloakSession session) {
+                        RealmModel currentRealm = session.realms().getRealm(realmId);
+                        session.getContext().setRealm(currentRealm);
+
+                        GroupModel gm = getGroupModelByAttrGid(session.groups(), currentRealm, gid);
+
+                        // removing associated users before removing groups
+                        // TODO: check if this is needed
+                        // session.users().getGroupMembersStream(currentRealm, gm)
+                        // .forEach(um -> {um.leaveGroup(gm);});
+
+                        currentRealm.removeGroup(gm);
+                        result.increaseRemoved();
+
+                        LOGGER.debugv("[{0}] Removed group {1}", importId, gm.getName());
+                    }
+                });
+            }
+
+        } catch (SQLException e) {
+            throw new DbUserProviderException("Error on connect to database in " + realmId, e);
+        }
         return result;
+    }
+
+    private Set<String> getAllSynchronizedGroupIds(KeycloakSessionFactory sessionFactory, String realmId) {
+        return KeycloakModelUtils.runJobInTransactionWithResult(sessionFactory, (session) -> {
+            RealmModel currentRealm = session.realms().getRealm(realmId);
+            session.getContext().setRealm(currentRealm);
+            return session.groups().getGroupsStream(currentRealm)
+                    .map(gm -> gm.getFirstAttribute(ColumnGroups.gid.name()))
+                    .collect(Collectors.toSet());
+        });
+    }
+
+    private GroupModel getGroupModelByAttrGid(GroupProvider gp, RealmModel realm, String val) {
+        return gp.searchGroupsByAttributes(realm, Collections.singletonMap(ColumnGroups.gid.name(), val), 0, 1)
+                .findFirst().orElse(null);
     }
 
     @Override
@@ -103,6 +244,10 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         Timestamp timeStamp = new Timestamp(lastSync.getTime());
 
         LOGGER.infov("[{0}] Sync since {1} started {2}", importId, realmId, timeStamp);
+
+        LOGGER.infov("[{0}] Sync since groups {1} started", importId, realmId);
+        SynchronizationResult groupsResult = importGroups(importId, sessionFactory, realmId, model);
+        LOGGER.infov("[{0}] Sync since groups {1} finished: {2}", importId, realmId, groupsResult);
 
         String sql = model.get(DataSouceConfiguration.SYNC_SINCE_SQL);
 
@@ -156,11 +301,11 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
     }
 
     public static UserStorageProviderModel getModel(RealmModel realm) {
-		return ((StorageProviderRealmModel) realm).getUserStorageProvidersStream()
-				.filter(fedProvider -> Objects.equals(fedProvider.getProviderId(), DbUserProviderFactory.PROVIDER_ID))
-				.findFirst()
-				.orElseThrow(() -> new DbUserProviderException(DbUserProviderFactory.PROVIDER_ID + " not configured"));
-	}
+        return ((StorageProviderRealmModel) realm).getUserStorageProvidersStream()
+                .filter(fedProvider -> Objects.equals(fedProvider.getProviderId(), DbUserProviderFactory.PROVIDER_ID))
+                .findFirst()
+                .orElseThrow(() -> new DbUserProviderException(DbUserProviderFactory.PROVIDER_ID + " not configured"));
+    }
 
     private SynchronizationResult importUsers(String importId, KeycloakSessionFactory sessionFactory, String realmId,
             UserStorageProviderModel model, String sql, Consumer<PreparedStatement> psConsumer) {
@@ -171,7 +316,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
 
         try (Connection con = ds.getConnection();
                 PreparedStatement ps = con.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE,
-                ResultSet.CONCUR_READ_ONLY);) {
+                        ResultSet.CONCUR_READ_ONLY);) {
 
             psConsumer.accept(ps);
 
@@ -205,10 +350,11 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                             DbUserProvider provider = create(session, model);
 
                             try {
-
+                                List<GroupModel> groups = getUserGroupModels(session, currentRealm, model, con,
+                                        username);
                                 List<String> roles = getRoles(model, con, username);
                                 Importation importation = provider.importUser(importId, currentRealm, model, data,
-                                        roles);
+                                        roles, groups);
                                 if (importation == Importation.ADDED) {
                                     result.increaseAdded();
                                 } else {
@@ -228,6 +374,32 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
             throw new DbUserProviderException("Error on connect to database in " + realmId, e);
         }
         return result;
+    }
+
+    private List<GroupModel> getUserGroupModels(KeycloakSession session, RealmModel realm,
+            UserStorageProviderModel model, Connection con, String username) throws SQLException {
+        String groupUserSql = model.get(DataSouceConfiguration.SYNC_GROUP_USER_SQL);
+
+        if (StringUtil.isBlank(groupUserSql)) {
+            return Collections.emptyList();
+        }
+
+        List<GroupModel> groups = new LinkedList<GroupModel>();
+
+        GroupProvider groupProvider = session.groups();
+        try (PreparedStatement ps = con.prepareStatement(groupUserSql);) {
+            ps.setString(1, username);
+
+            try (ResultSet rs = ps.executeQuery();) {
+                while (rs.next()) {
+                    GroupModel gm = getGroupModelByAttrGid(groupProvider, realm, rs.getString(ColumnGroups.gid.name()));
+                    if (gm != null) {
+                        groups.add(gm);
+                    }
+                }
+            }
+        }
+        return groups;
     }
 
     private List<String> getRoles(UserStorageProviderModel model, Connection con, String username) throws SQLException {
@@ -275,7 +447,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         }
     }
 
-    private void logDebugData(String importId, HashMap<String, Object> data) {
+    private void logDebugData(String importId, HashMap<String, ? extends Object> data) {
         if (LOGGER.isDebugEnabled()) {
             Map<String, Object> clone = (HashMap<String, Object>) data.clone();
             clone.computeIfPresent(Column.temp_password.name(), (String x, Object y) -> "***");

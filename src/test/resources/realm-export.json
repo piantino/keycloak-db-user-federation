@@ -820,6 +820,12 @@
           ],
           "syncSinceSql": [
             "SELECT username, email, email_verified, first_name, last_name, enabled, required_actions, updated, ability FROM db_user_users WHERE updated > ?"
+          ],
+          "syncGroupSql": [
+            "select gid, gid_parent, name, attr1, attr2, attr3 from db_group_groups"
+          ],
+          "syncGroupUserSql": [
+            "select gid from db_user_groups where username = ?"
           ]
         }
       }

@@ -1,6 +1,9 @@
 package com.github.piantino.keycloak;
 
-import java.sql.Timestamp;
+import static com.github.piantino.keycloak.DbProviderUtils.hasColumn;
+import static com.github.piantino.keycloak.DbProviderUtils.toAttributeValue;
+import static com.github.piantino.keycloak.DbProviderUtils.toBoolean;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -13,6 +16,7 @@ import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.PasswordCredentialProviderFactory;
 import org.keycloak.models.Constants;
+import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
@@ -30,6 +34,10 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     public enum Column {
         username, email, email_verified, enabled, first_name, last_name, temp_password, required_actions, updated, marked_for_removal
     }
+	
+    public enum ColumnGroups { 
+		gid, gid_parent, name 
+	}
 
     public enum Importation {
         ADDED, UPDATED
@@ -40,9 +48,6 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     private static final List<String> Column_KEYS = Arrays.asList(Column.values()).stream().map(a -> a.name())
             .collect(Collectors.toList());
 
-    // For DB without support to boolean data type
-    private static final String TRUE_VALUE = "y";
-
     private KeycloakSession session;
 
     public DbUserProvider(KeycloakSession session) {
@@ -50,7 +55,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     }
 
     public Importation importUser(String importId, RealmModel realm, ComponentModel model, Map<String, Object> data,
-            List<String> roles) {
+            List<String> roles, List<GroupModel> groups) {
         String username = (String) data.get(Column.username.name());
         String email = (String) data.get(Column.email.name());
 
@@ -77,19 +82,30 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         }
 
         user.setEmail(email);
-        user.setEmailVerified(toBoolean(data, Column.email_verified));
-        user.setEnabled(toBoolean(data, Column.enabled));
+        user.setEmailVerified(toBoolean(data, Column.email_verified.name()));
+        user.setEnabled(toBoolean(data, Column.enabled.name()));
         user.setFirstName((String) data.get(Column.first_name.name()));
         user.setLastName((String) data.get(Column.last_name.name()));
-        user.setSingleAttribute(Column.updated.name(), toAttribute(data.get(Column.updated.name())));
+        user.setSingleAttribute(Column.updated.name(), toAttributeValue(data.get(Column.updated.name())));
 
         updateAttributes(user, data);
         importRoles(importId, realm, user, roles);
-
+        synchronizeUserGroups(user, groups);
+        
         user.setSingleAttribute("synched", LocalDateTime.now().toString());
 
         return importation;
     }
+
+	private void synchronizeUserGroups(UserModel user, List<GroupModel> groups) {
+		Set<String> ids = groups.stream().map(GroupModel::getId).collect(Collectors.toSet());
+		
+		// removendo os grupos do usuário
+        user.getGroupsStream().filter(g -> !ids.contains(g.getId())).forEach(user::leaveGroup);
+
+        // incluindo os grupos (novos) do usuário
+        groups.forEach(user::joinGroup);
+	}
 
     private void importRoles(String importId, RealmModel realm, UserModel user, List<String> roles) {
         RoleModel roleRoot = getRoleRoot(realm);
@@ -168,11 +184,11 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         data.entrySet().stream()
                 .filter(entry -> !Column_KEYS.contains(entry.getKey()))
                 .filter(entry -> entry.getValue() != null)
-                .forEach(entry -> user.setSingleAttribute(entry.getKey(), toAttribute(entry.getValue())));
+                .forEach(entry -> user.setSingleAttribute(entry.getKey(), toAttributeValue(entry.getValue())));
     }
 
     private void createCredential(RealmModel realm, UserModel user, Map<String, Object> data) {
-        if (hasColumn(data, Column.temp_password)) {
+        if (hasColumn(data, Column.temp_password.name())) {
             // PasswordCredentialProvider passwordProvider =
             // session.getProvider(PasswordCredentialProvider.class);
             PasswordCredentialProviderFactory f = new PasswordCredentialProviderFactory();
@@ -189,7 +205,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     private Set<UserModel.RequiredAction> getRequiredActions(Map<String, Object> data) {
         Set<UserModel.RequiredAction> actions = new HashSet<>();
 
-        if (hasColumn(data, Column.required_actions)) {
+        if (hasColumn(data, Column.required_actions.name())) {
             String value = (String) data.get(Column.required_actions.name());
 
             for (String action : value.split(",")) {
@@ -202,29 +218,6 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
             }
         }
         return actions;
-    }
-
-    private boolean toBoolean(Map<String, Object> data, Column column) {
-        if (!hasColumn(data, column)) {
-            return false;
-        }
-        Object value = data.get(column.name());
-        if (value instanceof String) {
-            return TRUE_VALUE.equals(((String) value));
-        }
-        return (Boolean) value;
-    }
-
-    private String toAttribute(Object value) {
-        if (value instanceof Timestamp) {
-            Timestamp time = (Timestamp) value;
-            return time.toLocalDateTime().toString();
-        }
-        return value.toString();
-    }
-
-    private boolean hasColumn(Map<String, Object> data, Column column) {
-        return data.get(column.name()) != null;
     }
 
     private RoleModel getDefaultRole(RealmModel realm) {

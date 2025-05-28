@@ -33,6 +33,7 @@ import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.RoleResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.authorization.client.AuthzClient;
 import org.keycloak.authorization.client.Configuration;
@@ -41,13 +42,16 @@ import org.keycloak.common.VerificationException;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.IDToken;
 import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.SynchronizationResultRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.ext.ScriptUtils;
 import org.testcontainers.jdbc.JdbcDatabaseDelegate;
+import org.testcontainers.utility.DockerLoggerFactory;
 import org.testcontainers.utility.MountableFile;
 
 import com.fasterxml.jackson.core.JsonParseException;
@@ -76,6 +80,9 @@ public class DbUserProviterTest {
                                         .resolve("org.apache.commons:commons-lang3")
                                         .withoutTransitivity().asList(File.class))
                         .withNetwork(network)
+                        // For debug proposes, uncomment the following lines
+                        // .withDebug()
+                        // .withDebugFixedPort(8000, false)
                         .withRealmImportFile("realm-export.json")
                         .withCopyFileToContainer(MountableFile.forClasspathResource("keycloak.conf"),
                                         "/opt/keycloak/conf/keycloak.conf")
@@ -83,7 +90,13 @@ public class DbUserProviterTest {
                         .withEnv("KC_DB_URL", DB_URL)
                         .withEnv("KC_DB_USERNAME", "sa")
                         .withEnv("KC_DB_PASSWORD", "sa")
-                        .withEnv("TZ", "America/Sao_Paulo");
+                        .withEnv("TZ", "America/Sao_Paulo")
+                        .withLogConsumer(new Slf4jLogConsumer(DockerLoggerFactory.getLogger("")) {
+                                public void accept(org.testcontainers.containers.output.OutputFrame outputFrame) {
+                                        super.accept(outputFrame);
+                                        System.out.print(outputFrame.getUtf8String());
+                                };
+                        });
 
         private PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13.11")
                         .withDatabaseName("test-db")
@@ -159,7 +172,7 @@ public class DbUserProviterTest {
 
         @Test
         @Order(3)
-        public void valitateRoleImportation() {
+        public void validateRoleImportation() {
                 RoleResource rootRole = realm.roles().get("db-user-provider-roles");
                 assertEquals(4, rootRole.getRealmRoleComposites().size(), "Root role");
 
@@ -185,6 +198,47 @@ public class DbUserProviterTest {
         }
 
         @Test
+        @Order(3)
+        public void validateGroupCountImportation() {
+                assertEquals(16, realm.groups().count(false).get("count"), "Groups synchronized");
+        }
+
+        @ParameterizedTest
+        @Order(3)
+        @CsvSource(value = {
+                        "1,     , 'first group',  'first group attr 1', 'first group attr 2', 'first group attr 3'",
+                        "2,     , 'second group', 'second group attr 1', 'second group attr 2', 'second group attr 3'",
+                        "3,     , 'third group',  'third group attr 1', 'third group attr 2', 'third group attr 3'",
+                        "21,       2, 'second group 1', 'sg 1 attr1', 'sg 1 attr2',  ",
+                        "22,       2, 'second group 2',  ,        'sg 2 attr2', 'sg 2 attr3'",
+                        "23,       2, 'second group 3', 'sg 3 attr1',  ,        'sg 3 attr3'",
+                        "24,       2, 'second group 4',  ,         ,         ",
+                        "31,       3,'third group 1'      , 'tg attr1 1'      , 'tg attr2 1'      , 'tg attr3 1'",
+                        "32,       3,'third group 2 '     , 'tg attr1 2 '     , 'tg attr2 2 '     , 'tg attr3 2 '",
+                        "321,     32,'third group 2-1'    , 'tg attr1 2-1'    , 'tg attr2 2-1'    , 'tg attr3 2-1'",
+                        "322,     32,'third group 2-2'    , 'tg attr1 2-2'    , 'tg attr2 2-2'    , 'tg attr3 2-2'",
+                        "323,     32,'third group 2-3'    , 'tg attr1 2-3'    , 'tg attr2 2-3'    , 'tg attr3 2-3'",
+                        "33,       3,'third group 3'      , 'tg attr1 3'      , 'tg attr2 3'      , 'tg attr3 3'",
+                        "331,     33,'third group 3-1'    , 'tg attr1 3-1'    , 'tg attr2 3-1'    , 'tg attr3 3-1'",
+                        "3311,   331,'third group 3-1-1'  , 'tg attr1 3-1-1'  , 'tg attr2 3-1-1'  , 'tg attr3 3-1-1'",
+                        "33111, 3311,'third group 3-1-1-1', 'tg attr1 3-1-1-1', 'tg attr2 3-1-1-1', 'tg attr3 3-1-1-1'",
+
+        })
+        public void validateGroupImportation(String gid, String gid_parent, String name, String attr1, String attr2,
+                        String attr3) {
+                validateGroup(gid, gid_parent, name, attr1, attr2, attr3);
+        }
+
+        @Test
+        @Order(3)
+        public void validateUserGroupImportation() {
+                validateUserInGroups("hank", "first group", "second group 1");
+                validateUserInGroups("sheila", "third group 3-1", "third group 3-1-1", "third group 3-1-1-1");
+                validateUserInGroups("uni", "second group", "third group");
+                validateUserInGroups("master", "second group 1", "third group 1");
+        }
+
+        @Test
         @Order(4)
         public void importChangedUsersFromDB() {
                 JdbcDatabaseDelegate containerDelegate = new JdbcDatabaseDelegate(postgres, "");
@@ -200,7 +254,7 @@ public class DbUserProviterTest {
 
         @Test
         @Order(5)
-        public void valitateRoleChanged() {
+        public void validateRoleChanged() {
                 RoleResource rootRole = realm.roles().get("db-user-provider-roles");
                 assertEquals(8, rootRole.getRealmRoleComposites().size(), "Root role");
 
@@ -223,6 +277,47 @@ public class DbUserProviterTest {
                 List<String> expected = Arrays.asList(
                                 "default-roles-db-user-realm", "role1", "role3", "role4", "role5", "role6");
                 assertIterableEquals(expected, roles, "Master roles");
+        }
+
+        @Test
+        @Order(5)
+        public void validateGroupCountSync() {
+                assertEquals(17, realm.groups().count(false).get("count"), "Groups synchronized");
+        }
+
+        @ParameterizedTest
+        @Order(5)
+        @CsvSource(value = {
+                        "1,     , 'first group',  'first group attr 1', 'first group attr 2', 'first group attr 3'",
+                        "2,     , 'second group', 'second group attr 1', 'second group attr 2', 'second group attr 3'",
+                        "3,     , 'third group',  'third group attr 1', 'third group attr 2', 'third group attr 3'",
+                        "21,       2, 'second group 1', 'sg 1 attr1', 'sg 1 attr2',  ",
+                        "22,       2, 'second group 2',  ,        'sg 2 attr2', 'sg 2 attr3'",
+                        "23,       2, 'second group 3', 'sg 3 attr1',  ,        'sg 3 attr3'",
+                        "24,       2, 'second group 4',  ,         ,         ",
+                        "31,       3,'third group 1'      , 'tg attr1 1'      , 'tg attr2 1'      , 'tg attr3 1'",
+                        "32,       3,'third group 2 '     , 'tg attr1 2 '     , 'tg attr2 2 '     , 'tg attr3 2 '",
+                        "321,     32,'third group 2-1'    , 'tg attr1 2-1'    , 'tg attr2 2-1'    , 'tg attr3 2-1'",
+                        "322,     32,'third group 2-2'    , 'tg attr1 2-2'    , 'tg attr2 2-2'    , 'tg attr3 2-2'",
+                        "323,     32,'third group 2-3'    , 'tg attr1 2-3'    , 'tg attr2 2-3'    , 'tg attr3 2-3'",
+                        "324,     32,'third group 2-4'    , 'tg attr1 2-4'    , 'tg attr2 2-4'    , 'tg attr3 2-4'",
+                        "325,     32,'third group 2-5'    , 'tg attr1 2-5'    , 'tg attr2 2-5'    , 'tg attr3 2-5'",
+                        "33,       3,'third group 3'      , 'tg attr1 3'      , 'tg attr2 3'      , 'tg attr3 3'",
+                        "331,     33,'third group 3-1 updated','tg attr1 3-1 updated','tg attr2 3-1 updated'    , 'tg attr3 3-1 updated'",
+                        "33111, 331,'third group 3-1-1-1', 'tg attr1 3-1-1-1', 'tg attr2 3-1-1-1', 'tg attr3 3-1-1-1'",
+        })
+        public void validateGroupSync(String gid, String gid_parent, String name, String attr1, String attr2,
+                        String attr3) {
+                validateGroup(gid, gid_parent, name, attr1, attr2, attr3);
+        }
+
+        @Test
+        @Order(5)
+        public void validateUserGroupSync() {
+                validateUserInGroups("hank", "second group 3", "second group 4");
+                validateUserInGroups("sheila", "third group 3-1 updated", "third group 3-1-1-1");
+                validateUserInGroups("uni", "second group", "third group", "third group 2-4");
+                validateUserInGroups("master");
         }
 
         @Test
@@ -332,5 +427,38 @@ public class DbUserProviterTest {
                 System.out.println(metrics);
 
                 assertNotEquals("Metrics Disabled", metrics);
+        }
+
+        private void validateUserInGroups(String username, String... expected) {
+                UserRepresentation userrep = realm.users().search(username).getFirst();
+                UserResource userres = realm.users().get(userrep.getId());
+                String[] groups = userres.groups().stream().map(GroupRepresentation::getName).sorted()
+                                .toArray(String[]::new);
+                Arrays.sort(expected);
+                assertArrayEquals(expected, groups, "Groups for " + username);
+        }
+
+        private void validateGroup(String gid, String gid_parent, String name, String attr1, String attr2,
+                        String attr3) {
+                GroupRepresentation grep = getGroupByName(name);
+
+                assertEquals(name, grep.getName(), "name of " + name);
+                validateGroupAttr(grep, name, "gid", gid);
+                validateGroupAttr(grep, name, "gid_parent", gid_parent);
+                validateGroupAttr(grep, name, "attr1", attr1);
+                validateGroupAttr(grep, name, "attr2", attr2);
+                validateGroupAttr(grep, name, "attr3", attr3);
+        }
+
+        private GroupRepresentation getGroupByName(String name) {
+                return realm.groups().query(name, false, 0, 1000, false)
+                                .stream()
+                                .filter(g -> name.equals(g.getName()))
+                                .findFirst()
+                                .orElse(null);
+        }
+
+        private void validateGroupAttr(GroupRepresentation grep, String name, String attr, String expected) {
+                assertIterableEquals(Arrays.asList(expected), grep.getAttributes().get(attr), attr + " of " + name);
         }
 }
