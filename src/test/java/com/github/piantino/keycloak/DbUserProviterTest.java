@@ -442,6 +442,7 @@ public class DbUserProviterTest {
                         String attr3) {
                 GroupRepresentation grep = getGroupByName(name);
 
+                assertNotNull(grep, "Group \"" + name + "\" not exists");
                 assertEquals(name, grep.getName(), "name of " + name);
                 validateGroupAttr(grep, name, "gid", gid);
                 validateGroupAttr(grep, name, "gid_parent", gid_parent);

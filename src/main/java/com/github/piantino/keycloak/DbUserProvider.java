@@ -32,12 +32,13 @@ import com.github.piantino.keycloak.exception.DbUserProviderException;
 public class DbUserProvider implements UserStorageProvider, ImportedUserValidation {
 
     public enum Column {
-        username, email, email_verified, enabled, first_name, last_name, temp_password, required_actions, updated, marked_for_removal
+        username, email, email_verified, enabled, first_name, last_name, temp_password, required_actions, updated,
+        marked_for_removal
     }
-	
-    public enum ColumnGroups { 
-		gid, gid_parent, name 
-	}
+
+    public enum ColumnGroups {
+        gid, gid_parent, name
+    }
 
     public enum Importation {
         ADDED, UPDATED
@@ -45,7 +46,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
 
     private static final Logger LOGGER = Logger.getLogger(DbUserProvider.class);
 
-    private static final List<String> Column_KEYS = Arrays.asList(Column.values()).stream().map(a -> a.name())
+    private static final List<String> COLUMN_KEYS = Arrays.asList(Column.values()).stream().map(a -> a.name())
             .collect(Collectors.toList());
 
     private KeycloakSession session;
@@ -91,21 +92,21 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
         updateAttributes(user, data);
         importRoles(importId, realm, user, roles);
         synchronizeUserGroups(user, groups);
-        
+
         user.setSingleAttribute("synched", LocalDateTime.now().toString());
 
         return importation;
     }
 
-	private void synchronizeUserGroups(UserModel user, List<GroupModel> groups) {
-		Set<String> ids = groups.stream().map(GroupModel::getId).collect(Collectors.toSet());
-		
-		// removendo os grupos do usuário
+    private void synchronizeUserGroups(UserModel user, List<GroupModel> groups) {
+        Set<String> ids = groups.stream().map(GroupModel::getId).collect(Collectors.toSet());
+
+        // removendo os grupos do usuário
         user.getGroupsStream().filter(g -> !ids.contains(g.getId())).forEach(user::leaveGroup);
 
         // incluindo os grupos (novos) do usuário
         groups.forEach(user::joinGroup);
-	}
+    }
 
     private void importRoles(String importId, RealmModel realm, UserModel user, List<String> roles) {
         RoleModel roleRoot = getRoleRoot(realm);
@@ -182,7 +183,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
 
     private void updateAttributes(UserModel user, Map<String, Object> data) {
         data.entrySet().stream()
-                .filter(entry -> !Column_KEYS.contains(entry.getKey()))
+                .filter(entry -> !COLUMN_KEYS.contains(entry.getKey()))
                 .filter(entry -> entry.getValue() != null)
                 .forEach(entry -> user.setSingleAttribute(entry.getKey(), toAttributeValue(entry.getValue())));
     }

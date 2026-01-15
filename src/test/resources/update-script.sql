@@ -22,8 +22,8 @@ insert into db_user_roles (username, name)
 UPDATE db_user_users SET updated = now() WHERE username = 'master';
 
 -- creating two group
-insert into db_group_groups (gid, gid_parent, name, attr1, attr2, attr3) values (324,     32,'third group 2-4'    , 'tg attr1 2-4'    , 'tg attr2 2-4'    , 'tg attr3 2-4');
-insert into db_group_groups (gid, gid_parent, name, attr1, attr2, attr3) values (325,     32,'third group 2-5'    , 'tg attr1 2-5'    , 'tg attr2 2-5'    , 'tg attr3 2-5');
+insert into db_group_groups (gid, gid_parent, name, attr1, attr2, attr3) values (324, 32, 'third group 2-4', 'tg attr1 2-4', 'tg attr2 2-4', 'tg attr3 2-4');
+insert into db_group_groups (gid, gid_parent, name, attr1, attr2, attr3) values (325, 32, 'third group 2-5', 'tg attr1 2-5', 'tg attr2 2-5', 'tg attr3 2-5');
 
 -- updating one group
 update db_group_groups set name = 'third group 3-1 updated', attr1 = 'tg attr1 3-1 updated', attr2='tg attr2 3-1 updated', attr3='tg attr3 3-1 updated' where gid = 331;

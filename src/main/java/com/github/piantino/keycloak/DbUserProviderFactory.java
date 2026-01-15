@@ -162,11 +162,16 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
 
                             GroupModel gm = getGroupModelByAttrGid(session.groups(), currentRealm, gid);
                             if (gm == null) {
-                                gm = currentRealm.createGroup(gid, name, gmParent);
+                                String uuidGid = String.format("%s_%s", realmId, data.get(ColumnGroups.gid.name()));
+                                gm = currentRealm.createGroup(uuidGid, name, gmParent);
                                 LOGGER.debugv("[{0}] Created group {1}", importId, name);
                                 result.increaseAdded();
                             } else {
                                 gm.setName(name);
+
+                                if (gmParent != null && !gm.getParent().getId().equals(gmParent.getId())) {
+                                    currentRealm.moveGroup(gm, gmParent);
+                                }
                                 result.increaseUpdated();
                             }
 
@@ -176,9 +181,6 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                                 }
                             }
 
-                            if (gmParent != null) {
-                                currentRealm.moveGroup(gm, gmParent);
-                            }
                         } catch (Throwable e) {
                             result.increaseFailed();
                             LOGGER.errorv(e, "[{0}] Sync group error {1}", importId, name);
