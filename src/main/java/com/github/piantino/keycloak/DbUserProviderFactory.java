@@ -158,11 +158,11 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                         try {
                             allGroupGids.remove(gid);
 
-                            GroupModel gmParent = getGroupModelByAttrGid(session.groups(), currentRealm, gidParent);
+                            GroupModel gmParent = getGroupModelByGid(session.groups(), currentRealm, gidParent);
 
-                            GroupModel gm = getGroupModelByAttrGid(session.groups(), currentRealm, gid);
+                            GroupModel gm = getGroupModelByGid(session.groups(), currentRealm, gid);
                             if (gm == null) {
-                                String uuidGid = String.format("%s_%s", realmId, data.get(ColumnGroups.gid.name()));
+                                String uuidGid = getGroupUuid(realmId, data.get(ColumnGroups.gid.name()));
                                 gm = currentRealm.createGroup(uuidGid, name, gmParent);
                                 LOGGER.debugv("[{0}] Created group {1}", importId, name);
                                 result.increaseAdded();
@@ -186,6 +186,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                             LOGGER.errorv(e, "[{0}] Sync group error {1}", importId, name);
                         }
                     }
+
                 });
 
                 logPartial(importId, total, counter);
@@ -202,7 +203,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
                         RealmModel currentRealm = session.realms().getRealm(realmId);
                         session.getContext().setRealm(currentRealm);
 
-                        GroupModel gm = getGroupModelByAttrGid(session.groups(), currentRealm, gid);
+                        GroupModel gm = getGroupModelByGid(session.groups(), currentRealm, gid);
 
                         // removing associated users before removing groups
                         // TODO: check if this is needed
@@ -233,9 +234,8 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
         });
     }
 
-    private GroupModel getGroupModelByAttrGid(GroupProvider gp, RealmModel realm, String val) {
-        return gp.searchGroupsByAttributes(realm, Collections.singletonMap(ColumnGroups.gid.name(), val), 0, 1)
-                .findFirst().orElse(null);
+    private GroupModel getGroupModelByGid(GroupProvider gp, RealmModel realm, String gid) {
+        return gp.getGroupById(realm, getGroupUuid(realm.getId(), gid));
     }
 
     @Override
@@ -394,7 +394,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
 
             try (ResultSet rs = ps.executeQuery();) {
                 while (rs.next()) {
-                    GroupModel gm = getGroupModelByAttrGid(groupProvider, realm, rs.getString(ColumnGroups.gid.name()));
+                    GroupModel gm = getGroupModelByGid(groupProvider, realm, rs.getString(ColumnGroups.gid.name()));
                     if (gm != null) {
                         groups.add(gm);
                     }
@@ -424,6 +424,10 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
             }
         }
         return roles;
+    }
+
+    private String getGroupUuid(String realmId, String gid) {
+        return String.format("%s_%s", realmId, gid);
     }
 
     private static AgroalDataSource getDataSource(UserStorageProviderModel model) {
