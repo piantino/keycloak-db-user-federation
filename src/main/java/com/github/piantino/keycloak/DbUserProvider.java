@@ -184,8 +184,13 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     private void updateAttributes(UserModel user, Map<String, Object> data) {
         data.entrySet().stream()
                 .filter(entry -> !COLUMN_KEYS.contains(entry.getKey()))
-                .filter(entry -> entry.getValue() != null)
-                .forEach(entry -> user.setSingleAttribute(entry.getKey(), toAttributeValue(entry.getValue())));
+                .forEach(entry -> {
+                    if (entry.getValue() == null) {
+                        user.removeAttribute(entry.getKey());
+                    } else {
+                        user.setSingleAttribute(entry.getKey(), toAttributeValue(entry.getValue()));
+                    }
+                });
     }
 
     private void createCredential(RealmModel realm, UserModel user, Map<String, Object> data) {

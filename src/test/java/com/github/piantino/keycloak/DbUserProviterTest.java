@@ -347,6 +347,7 @@ public class DbUserProviterTest {
                 UserRepresentation user = realm.users().search("master").get(0);
                 assertEquals("Missing", user.getFirstName(), "First name");
                 assertEquals(false, user.isEnabled(), "Disabled");
+                assertEquals(null, user.getAttributes().get("ability"), "Ability removed");
         }
 
         @Test

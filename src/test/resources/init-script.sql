@@ -37,8 +37,8 @@ INSERT INTO db_user_users (username, email, email_verified, first_name, last_nam
 INSERT INTO db_user_users (username, email, email_verified, first_name, last_name, enabled, ability)
     VALUES ('uni', 'uni@unicorn.com', 'n', 'Uni', 'Unicorn', false, 'teleport');
 
-INSERT INTO db_user_users (username, email, email_verified, first_name, last_name, enabled)
-    VALUES ('master', 'dungeon@master.com', 'y', 'Dungeon', 'Master', true);
+INSERT INTO db_user_users (username, email, email_verified, first_name, last_name, enabled, ability)
+    VALUES ('master', 'dungeon@master.com', 'y', 'Dungeon', 'Master', true, 'magic');
 
 -- Invalid users
 
