@@ -455,7 +455,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
 
     private void logDebugData(String importId, HashMap<String, ? extends Object> data) {
         if (LOGGER.isDebugEnabled()) {
-            Map<String, Object> clone = (HashMap<String, Object>) data.clone();
+            Map<String, Object> clone = (Map<String, Object>) data.clone();
             clone.computeIfPresent(Column.temp_password.name(), (String x, Object y) -> "***");
             LOGGER.debugv("[{0}] Sync data {1}", importId, clone);
         }

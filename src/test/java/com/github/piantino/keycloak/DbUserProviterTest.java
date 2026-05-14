@@ -71,7 +71,7 @@ public class DbUserProviterTest {
 
         private Network network = Network.newNetwork();
 
-        private KeycloakContainer keycloak = new KeycloakContainer("quay.io/keycloak/keycloak:25.0.6")
+        private KeycloakContainer keycloak = new KeycloakContainer("quay.io/keycloak/keycloak:26.6.1")
                         .withAdminUsername("admin")
                         .withAdminPassword("admin123")
                         .withProviderClassesFrom("target/classes")
@@ -399,8 +399,7 @@ public class DbUserProviterTest {
                         if (expected.equals("CORRECT")) {
                                 fail("Invalid credential", e);
                         }
-                        int expectedStatus = username.equals("invalid_user") ? 401 : 400;
-                        assertEquals(expectedStatus, e.getStatusCode(), "Status HTTP");
+                        assertEquals(400, e.getStatusCode(), "Status HTTP");
                 }
         }
 

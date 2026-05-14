@@ -123,7 +123,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
     }
 
     private RoleModel getRole(String importId, RealmModel realm, RoleModel roleRoot, String roleName) {
-        RoleModel role = KeycloakModelUtils.getRoleFromString(realm, roleName);
+        RoleModel role = KeycloakModelUtils.getRoleFromString(this.session, realm, roleName);
 
         if (role == null) {
             role = session.roles().addRealmRole(realm, roleName);
@@ -138,7 +138,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
 
     private RoleModel getRoleRoot(RealmModel realm) {
         String rootRoleName = "db-user-provider-roles";
-        RoleModel roleRoot = KeycloakModelUtils.getRoleFromString(realm, rootRoleName);
+        RoleModel roleRoot = KeycloakModelUtils.getRoleFromString(this.session, realm, rootRoleName);
 
         if (roleRoot == null) {
             roleRoot = session.roles().addRealmRole(realm, rootRoleName);
@@ -228,7 +228,7 @@ public class DbUserProvider implements UserStorageProvider, ImportedUserValidati
 
     private RoleModel getDefaultRole(RealmModel realm) {
         String roleName = Constants.DEFAULT_ROLES_ROLE_PREFIX + "-" + realm.getId();
-        return KeycloakModelUtils.getRoleFromString(realm, roleName);
+        return KeycloakModelUtils.getRoleFromString(this.session,realm, roleName);
     }
 
 }

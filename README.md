@@ -9,6 +9,7 @@ A Keycloak extension for user providers from a database with synchronization in 
 | 1.0.x                       | 18.0.2   |
 | 1.1.x                       | 24.0.x   |
 | 1.2.x                       | 25.0.x   |
+| 1.3.x                       | 26.6.x   |
 
 Attention, jump to 24.0 because this security problem:
 https://github.com/keycloak/keycloak/security/advisories/GHSA-mpwq-j3xf-7m5w
@@ -96,7 +97,7 @@ Use the `com.github.piantino.keycloak.DbUserProviterTest` to fast development.
 
 Requirements:
 
-* Java 17
+* Java 21
 * Docker
 
 ### Run project for manual test
@@ -107,7 +108,7 @@ Build the project:
 
 Start the container:
 
-`VERSION=<project version> docker compose up`
+`VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout) docker compose up`
 
 Access the imported realm
 
@@ -118,28 +119,4 @@ http://localhost:8080/admin/master/console/#/db-user-realm/user-federation/db-us
 Install act (https://github.com/nektos/act) and run the command:
 
 `act -P ubuntu-latest=quay.io/jamezp/act-maven`
-
-
-## Deploy
-
-`mvn deploy`
-
-> Upon release, your component will be published to Central: this typically occurs within 30 minutes, though updates to search can take up to four hours.
-
-https://central.sonatype.com/
-
-### Deployment history
-
-https://central.sonatype.com/publishing/deployments
-
-### Configuration
-
-https://central.sonatype.org/publish/publish-portal-maven/
-
-
-The gpg keys can be send manually:
-
-`gpg --output piantino@gmail.com.gpg --export piantino@gmail.com`
-
-https://keys.openpgp.org/upload
 
