@@ -36,7 +36,7 @@ public class DbUserResourceProviderFactory implements AdminRealmResourceProvider
         // Do nothing
     }
 
-      @Override
+    @Override
     public Object getResource(KeycloakSession session, RealmModel realm, AdminPermissionEvaluator auth, AdminEventBuilder adminEvent) {
         return new DbUserResource(session, auth);
     }

@@ -29,6 +29,8 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.keycloak.TokenVerifier;
+import org.keycloak.admin.client.ClientBuilderWrapper;
+import org.keycloak.admin.client.JacksonProvider;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
@@ -45,6 +47,7 @@ import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.SynchronizationResultRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.util.JsonSerialization;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -55,11 +58,14 @@ import org.testcontainers.utility.DockerLoggerFactory;
 import org.testcontainers.utility.MountableFile;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.github.piantino.keycloak.DbUserProvider.Column;
 import com.github.piantino.keycloak.rest.DbUserResourceApi;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.Response;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -114,12 +120,21 @@ public class DbUserProviterTest {
         public void init() throws JsonParseException, JsonMappingException, IOException {
                 Stream.of(keycloak, postgres).parallel().forEach(GenericContainer::start);
 
+                ClientBuilder clientBuilder = ClientBuilderWrapper.create(null, false);
+
+                JacksonProvider jacksonProvider = new JacksonProvider();
+                jacksonProvider.setMapper(JsonSerialization.mapper.configure(
+                                DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false));
+                clientBuilder.register(jacksonProvider, 100);
+                Client resteasyClient = clientBuilder.build();
+
                 client = KeycloakBuilder.builder()
                                 .serverUrl(keycloak.getAuthServerUrl())
                                 .realm("master")
                                 .clientId("admin-cli")
                                 .username(keycloak.getAdminUsername())
                                 .password(keycloak.getAdminPassword())
+                                .resteasyClient(resteasyClient)
                                 .build();
 
                 realm = client.realm("db-user-realm");

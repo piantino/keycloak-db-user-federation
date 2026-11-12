@@ -10,6 +10,7 @@ A Keycloak extension for user providers from a database with synchronization in 
 | 1.1.x                       | 24.0.x   |
 | 1.2.x                       | 25.0.x   |
 | 1.3.x                       | 26.6.x   |
+| 1.4.x                       | 26.8.x   |
 
 Attention, jump to 24.0 because this security problem:
 https://github.com/keycloak/keycloak/security/advisories/GHSA-mpwq-j3xf-7m5w
