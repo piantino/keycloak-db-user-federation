@@ -230,6 +230,7 @@ public class DbUserProviderFactory implements UserStorageProviderFactory<DbUserP
             session.getContext().setRealm(currentRealm);
             return session.groups().getGroupsStream(currentRealm)
                     .map(gm -> gm.getFirstAttribute(ColumnGroups.gid.name()))
+                    .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
         });
     }

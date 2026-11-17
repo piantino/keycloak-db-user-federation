@@ -147,6 +147,13 @@ public class DbUserProviterTest {
         @Test
         @Order(1)
         public void importAllUsersFromDB() {
+                // Create a group that is not managed by the user provider
+                // This group should not affect the user synchronization
+                GroupRepresentation group = new GroupRepresentation();
+                group.setName("Not managed");
+                Response response = realm.groups().add(group);
+                assertEquals(201, response.getStatus(), "Group created");
+
                 SynchronizationResultRepresentation result = realm.userStorage().syncUsers(USER_PROVIDER_ID,
                                 "triggerFullSync");
 
@@ -215,7 +222,7 @@ public class DbUserProviterTest {
         @Test
         @Order(3)
         public void validateGroupCountImportation() {
-                assertEquals(16, realm.groups().count(false).get("count"), "Groups synchronized");
+                assertEquals(17, getGroupCount(), "Groups synchronized");
         }
 
         @ParameterizedTest
@@ -297,7 +304,7 @@ public class DbUserProviterTest {
         @Test
         @Order(5)
         public void validateGroupCountSync() {
-                assertEquals(17, realm.groups().count(false).get("count"), "Groups synchronized");
+                assertEquals(18, getGroupCount(), "Groups synchronized");
         }
 
         @ParameterizedTest
@@ -476,5 +483,9 @@ public class DbUserProviterTest {
 
         private void validateGroupAttr(GroupRepresentation grep, String name, String attr, String expected) {
                 assertIterableEquals(Arrays.asList(expected), grep.getAttributes().get(attr), attr + " of " + name);
+        }
+
+        private Long getGroupCount() {
+                return realm.groups().count(false).get("count");
         }
 }
