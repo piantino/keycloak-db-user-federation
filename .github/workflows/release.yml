@@ -24,7 +24,7 @@ jobs:
           cache: 'maven'
 
       - name: Build JAR with Maven
-        run: mvn -B package source:jar --DskipTests
+        run: mvn -B package source:jar -DskipTests
 
       - name: Create Release and Upload JAR
         uses: softprops/action-gh-release@v2
